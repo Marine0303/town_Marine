@@ -1,248 +1,635 @@
+
 <!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>建築ガチ勢</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>WOS MAP Simulator</title>
 <style>
-html,body{margin:0;height:100%;background:#050b1a;color:#e9eefc;font-family:system-ui;overflow:hidden}
-header{
-  position:fixed;top:0;left:0;right:0;z-index:10;
-  background:rgba(8,14,34,.92);backdrop-filter:blur(8px);
-  padding:10px;border-bottom:1px solid rgba(255,255,255,.1)
-}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-button,input{
-  background:#0f1b44;color:#fff;border:1px solid rgba(255,255,255,.2);
-  border-radius:10px;padding:8px 10px;font-size:13px
-}
-button.primary{background:#2b7cff;font-weight:700}
-label{font-size:12px;opacity:.8}
-#c{position:fixed;top:72px;left:0;right:0;bottom:0;touch-action:none}
-
-.panel{
-  position:fixed;top:80px;left:10px;right:10px;
-  background:rgba(10,16,40,.96);border:1px solid rgba(255,255,255,.12);
-  border-radius:16px;padding:12px;display:none;z-index:20
-}
-.panel.open{display:block}
-.effect{display:flex;justify-content:space-between;align-items:center;
-  padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.08);
-  margin-bottom:6px}
-.dot{width:10px;height:10px;border-radius:50%}
+  :root{
+    --bg:#0b1020;
+    --panel:#0e1630cc;
+    --panel2:#0e1630;
+    --line:#ffffff18;
+    --text:#e9eefc;
+    --muted:#aab6e8;
+    --btn:#101a38;
+    --btn2:#13214a;
+    --accent:#5aa2ff;
+    --danger:#ff5a6a;
+    --ok:#59d68a;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --r:14px;
+  }
+  html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif; overflow:hidden;}
+  #app{position:fixed; inset:0; display:flex; flex-direction:column;}
+  header{
+    padding:10px 10px 8px;
+    background:linear-gradient(180deg, #0b1020 0%, rgba(11,16,32,.5) 60%, rgba(11,16,32,0) 100%);
+    z-index:10;
+  }
+  .bar{
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    background:var(--panel);
+    border:1px solid #ffffff14;
+    border-radius:var(--r);
+    padding:10px;
+    box-shadow:var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+  .title{
+    display:flex; gap:8px; align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#0b132c;
+    border:1px solid #ffffff14;
+    color:var(--text);
+    font-weight:700;
+  }
+  .chip{display:flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; background:#0b132c; border:1px solid #ffffff14; color:var(--muted);}
+  .chip b{color:var(--text)}
+  button, input, select{
+    font:inherit;
+    border-radius:12px;
+    border:1px solid #ffffff14;
+    background:var(--btn);
+    color:var(--text);
+    padding:10px 12px;
+    outline:none;
+  }
+  button{cursor:pointer; background:var(--btn2);}
+  button.primary{background:linear-gradient(180deg, #1a2e66, #122252); border-color:#ffffff20;}
+  button.danger{background:linear-gradient(180deg, #5a1830, #3a1020); border-color:#ffffff20;}
+  button.ghost{background:transparent;}
+  input{width:92px;}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .hint{margin-top:8px; color:var(--muted); font-size:12px; line-height:1.35}
+  .hint b{color:var(--text)}
+  #stage{position:relative; flex:1; min-height:0;}
+  canvas{position:absolute; inset:0; width:100%; height:100%; touch-action:none;}
+  #toast{position:absolute; left:50%; transform:translateX(-50%); bottom:16px; background:#0e1630dd; border:1px solid #ffffff18; padding:10px 12px; border-radius:999px; color:var(--text); font-size:13px; opacity:0; transition:.18s; box-shadow:var(--shadow); backdrop-filter: blur(10px); z-index:20;}
+  #toast.show{opacity:1;}
 </style>
 </head>
 <body>
+<div id="app">
+  <header>
+    <div class="bar">
+      <div class="title">WOS シミュレーション</div>
 
-<header>
-  <div class="row">
-    <strong>WOS 旗ルート</strong>
-    <label>HQ X</label><input id="hqX" type="number" value="520" style="width:70px">
-    <label>HQ Y</label><input id="hqY" type="number" value="520" style="width:70px">
-    <button id="applyHQ">HQ反映</button>
-    <button id="openEff">効果選択</button>
-    <button id="build" class="primary">ルート作成</button>
-    <button id="reset">リセット</button>
+      <div class="row">
+        <span class="chip">モード: <b id="modeLabel">HQ追加</b></span>
+
+        <select id="mode">
+          <option value="add_hq">HQ追加</option>
+          <option value="select">選択/座標コピー</option>
+          <option value="delete">削除</option>
+        </select>
+
+        <span class="chip">距離 <b><input id="dist" type="number" value="200" min="0" step="10"></b></span>
+        <span class="chip">雪原リング <b><input id="snowR" type="number" value="260" min="0" step="10"></b></span>
+
+        <button class="primary" id="addHQ">HQ追加</button>
+        <button id="reset">表示リセット</button>
+        <button id="clear" class="danger">全消し</button>
+
+        <button id="save">保存(JSON)</button>
+        <label class="chip" style="cursor:pointer;">
+          読込(JSON)
+          <input id="load" type="file" accept="application/json" style="display:none;">
+        </label>
+      </div>
+
+      <div class="hint">
+        操作：<b>1本指ドラッグ</b>=移動 / <b>ピンチ</b>=ズーム / <b>タップ</b>=配置 or 選択<br/>
+        ルール：<b>HQは雪原リング内のみ</b>（中心=太陽城）。距離円は選択中の施設から表示。
+      </div>
+    </div>
+  </header>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="toast"></div>
   </div>
-</header>
-
-<canvas id="c"></canvas>
-
-<div id="effPanel" class="panel">
-  <strong>欲しい効果（重複不可）</strong>
-  <div id="effList"></div>
-  <button onclick="effPanel.classList.remove('open')">閉じる</button>
 </div>
 
 <script>
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
+(() => {
+  // ====== 基本パラメータ ======
+  const W = 1200; // ワールド座標 0..1199
+  const H = 1200;
+  const SUN = { id:"sun", kind:"sun", x:597, y:597, label:"SUN" };
 
-const SCALE = 0.6;
-const TILE = 18;
-const cam = {x:0,y:0,s:1};
-const BASE = {x:0,y:0};
+/* 太陽城 */
+add("sun",597,597,SIZE.sun,"SUN");
 
-const SUN = {x:597,y:597};
+/* 要塞 */
+[
+  [597,800,"1"],[400,597,"2"],
+  [597,400,"3"],[800,597,"4"]
+].forEach(f=>add("fortress",f[0],f[1],SIZE.fortress,`要塞${f[2]}`));
 
-const STATIONS_RAW = [
- [138,327],[138,957],[237,138],[327,1038],[768,138],[957,1068],
- [1068,237],[1068,747],[87,666],[138,237],[267,1068],[537,87],
- [636,1137],[957,138],[1068,936],[1137,567],[138,138],[138,666],
- [138,1038],[537,138],[666,1068],[1068,138],[1068,567],[1068,1068],
- [327,666],[486,327],[768,867],[867,567],[237,237],[237,957],
- [267,537],[537,936],[666,267],[957,237],[936,537],[957,957],
- [327,327],[327,867],[867,327],[867,867],[138,747],[237,486],
- [486,138],[486,957],[768,237],[768,1038],[957,747],[1068,486],
- [138,438],[138,867],[366,138],[438,1068],[666,138],[738,957],
- [957,438],[1068,666],[387,486],[588,867],[816,486],[387,717],
- [588,327],[816,717],[327,567],[486,867],[768,327],[867,666]
+/* 砦 */
+[
+  [237,828],[237,606],[237,348],
+  [366,237],[588,137],[846,237],
+  [957,348],[957,606],[957,828],
+  [846,957],[606,957],[306,957]
+].forEach(p=>add("fort",p[0],p[1],SIZE.fort,"砦"));
+
+/* ステーション（74） */
+const stations = [
+  [138,327],[138,957],[237,138],[327,1038],[768,138],[957,1068],
+  [1068,237],[1068,747],[87,666],[138,237],[267,1068],[537,87],
+  [636,1137],[957,138],[1068,936],[1137,567],[138,138],[138,666],
+  [138,1038],[537,138],[666,1068],[1068,138],[1068,567],[1068,1068],
+  [327,666],[486,327],[768,867],[867,567],[237,237],[237,957],
+  [267,537],[537,936],[666,267],[957,237],[936,537],[957,957],
+  [327,327],[327,867],[867,327],[867,867],[138,747],[237,486],
+  [486,138],[486,957],[768,237],[768,1038],[957,747],[1068,486],
+  [138,438],[138,867],[366,138],[438,1068],[666,138],[738,957],
+  [957,438],[1068,666],[387,486],[588,867],[816,486],[387,717],
+  [588,327],[816,717],[327,567],[486,867],[768,327],[867,666]
 ];
+  // HQは動的
+  let HQS = [
+    { id: crypto.randomUUID(), kind:"hq", x:597, y:484, label:"N9Q HQ" }
+  ];
 
-const EFFECTS = [
- {id:"prod",name:"生産",c:"#34d399"},
- {id:"gath",name:"採取",c:"#a3e635"},
- {id:"march",name:"行軍速度",c:"#60a5fa"},
- {id:"atk8",name:"攻撃8%",c:"#ef4444"},
- {id:"def8",name:"防御8%",c:"#f59e0b"},
- {id:"res8",name:"研究8%",c:"#8b5cf6"},
- {id:"build8",name:"建築8%",c:"#0ea5e9"}
-];
+  // ====== 描画設定 ======
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
 
-const stations = STATIONS_RAW.map(([x,y],i)=>({
- id:i+1,x,y,effect:EFFECTS[i%EFFECTS.length].id
-}));
+  function resize(){
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    cv.width = Math.floor(cv.clientWidth * dpr);
+    cv.height = Math.floor(cv.clientHeight * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener("resize", () => { resize(); draw(); }, {passive:true});
+  resize();
 
-const selectedEffects = new Set();
-let chosenStations = [];
-let edges = [];
+  // ====== カメラ（ズーム/パン） ======
+  const cam = { x: cv.clientWidth/2, y: cv.clientHeight/2, s: 0.62 }; // 画面座標系
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 
-let hq = {x:520,y:520};
+  // ====== 45度アイソメ変換 ======
+  // world(x,y) -> iso(u,v)
+  // u = (x - y)
+  // v = (x + y) * 0.5
+  function worldToIso(x,y){
+    return { u: (x - y), v: (x + y) * 0.5 };
+  }
+  // iso(u,v) -> world(x,y)
+  // x = v + u/2
+  // y = v - u/2
+  function isoToWorld(u,v){
+    return { x: v + u*0.5, y: v - u*0.5 };
+  }
 
-function iso(x,y){return{sx:(x-y)*SCALE,sy:(x+y)*SCALE*0.5}}
-function d2(a,b){return (a.x-b.x)**2+(a.y-b.y)**2}
+  // iso -> screen
+  function isoToScreen(u,v){
+    return { sx: cam.x + u * cam.s, sy: cam.y + v * cam.s };
+  }
+  // screen -> iso
+  function screenToIso(sx,sy){
+    return { u: (sx - cam.x)/cam.s, v: (sy - cam.y)/cam.s };
+  }
+  // screen -> world
+  function screenToWorld(sx,sy){
+    const {u,v} = screenToIso(sx,sy);
+    return isoToWorld(u,v);
+  }
 
-function resize(){
- const r=canvas.getBoundingClientRect();
- canvas.width=r.width*devicePixelRatio;
- canvas.height=r.height*devicePixelRatio;
- ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
- BASE.x=r.width/2;BASE.y=r.height/2;
-}
-window.addEventListener("resize",resize);resize();
+  // ====== UI ======
+  const elMode = document.getElementById("mode");
+  const modeLabel = document.getElementById("modeLabel");
+  const elDist = document.getElementById("dist");
+  const elSnowR = document.getElementById("snowR");
 
-function draw(){
- ctx.clearRect(0,0,canvas.width,canvas.height);
- ctx.save();
- ctx.translate(BASE.x+cam.x,BASE.y+cam.y);
- ctx.scale(cam.s,cam.s);
+  function syncModeLabel(){
+    const map = { add_hq:"HQ追加", select:"選択", delete:"削除" };
+    modeLabel.textContent = map[elMode.value] || elMode.value;
+  }
+  elMode.addEventListener("change", () => { syncModeLabel(); toast("モード: " + modeLabel.textContent); });
+  syncModeLabel();
 
- // 背景
- ctx.fillStyle="#071021";
- ctx.fillRect(-2000,-2000,4000,4000);
+  document.getElementById("addHQ").addEventListener("click", () => {
+    elMode.value = "add_hq";
+    syncModeLabel();
+    toast("MAPをタップしてHQ配置（雪原リング内のみ）");
+  });
 
- // ステ
- for(const s of stations){
-   const p=iso(s.x,s.y);
-   ctx.fillStyle="rgba(255,255,255,.25)";
-   ctx.beginPath();ctx.arc(p.sx,p.sy,2.5,0,Math.PI*2);ctx.fill();
- }
+  document.getElementById("reset").addEventListener("click", () => {
+    cam.x = cv.clientWidth/2;
+    cam.y = cv.clientHeight/2;
+    cam.s = 0.62;
+    toast("表示をリセット");
+    draw();
+  });
 
- // 太陽城
- const sp=iso(SUN.x,SUN.y);
- ctx.fillStyle="#facc15";
- ctx.beginPath();ctx.arc(sp.sx,sp.sy,8,0,Math.PI*2);ctx.fill();
+  document.getElementById("clear").addEventListener("click", () => {
+    HQS = [];
+    selectedId = null;
+    toast("HQを全消し");
+    draw();
+  });
 
- // ルート線
- ctx.strokeStyle="#2b7cff";ctx.lineWidth=3;
- for(const e of edges){
-   const a=iso(e.a.x,e.a.y),b=iso(e.b.x,e.b.y);
-   ctx.beginPath();ctx.moveTo(a.sx,a.sy);ctx.lineTo(b.sx,b.sy);ctx.stroke();
- }
+  // JSON保存/読込（完全無料）
+  document.getElementById("save").addEventListener("click", () => {
+    const data = { version:1, hqs:HQS, dist:+elDist.value||0, snowR:+elSnowR.value||0 };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `wos_map_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("JSON保存したよ");
+  });
 
- // HQ
- const hp=iso(hq.x,hq.y);
- ctx.fillStyle="#2b7cff";
- ctx.beginPath();ctx.arc(hp.sx,hp.sy,7,0,Math.PI*2);ctx.fill();
+  document.getElementById("load").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if(!f) return;
+    try{
+      const txt = await f.text();
+      const data = JSON.parse(txt);
+      if(Array.isArray(data.hqs)) HQS = data.hqs;
+      if(typeof data.dist === "number") elDist.value = data.dist;
+      if(typeof data.snowR === "number") elSnowR.value = data.snowR;
+      selectedId = null;
+      toast("JSON読込OK");
+      draw();
+    }catch(err){
+      toast("JSON読込失敗: " + err.message, true);
+    }finally{
+      e.target.value = "";
+    }
+  });
 
- // 選択ステ
- for(const s of chosenStations){
-   const p=iso(s.x,s.y);
-   ctx.fillStyle="#ff3b3b";
-   ctx.beginPath();ctx.arc(p.sx,p.sy,5,0,Math.PI*2);ctx.fill();
- }
+  // ====== トースト ======
+  const toastEl = document.getElementById("toast");
+  let toastTimer = null;
+  function toast(msg, danger=false){
+    toastEl.textContent = msg;
+    toastEl.style.borderColor = danger ? "#ff5a6a55" : "#ffffff18";
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toastEl.classList.remove("show"), 1600);
+  }
 
- ctx.restore();
-}
+  // ====== 施設一覧 ======
+  function allNodes(){
+    return [SUN, ...FORTRESS, ...STRONGHOLD, ...HQS];
+  }
+  function nodeStyle(kind){
+    // だいたい画像の雰囲気
+    switch(kind){
+      case "sun": return { fill:"#ffcc4d", stroke:"#ffffff", r:16, txt:"#0b1020" };
+      case "hq": return { fill:"#3e7cff", stroke:"#ffffff", r:14, txt:"#ffffff" };
+      case "fortress": return { fill:"#8aa0b9", stroke:"#dbe6ff", r:12, txt:"#0b1020" };
+      case "stronghold": return { fill:"#4bd39a", stroke:"#dbe6ff", r:12, txt:"#0b1020" };
+      default: return { fill:"#9bb0ff", stroke:"#ffffff", r:10, txt:"#0b1020" };
+    }
+  }
 
-function chooseStations(){
- chosenStations=[];
- for(const eff of selectedEffects){
-   const cands=stations.filter(s=>s.effect===eff);
-   let best=cands[0],bd=d2(hq,best);
-   for(const s of cands){
-     const d=d2(hq,s);
-     if(d<bd){bd=d;best=s}
-   }
-   chosenStations.push(best);
- }
-}
+  // ====== ヒットテスト ======
+  function hitTest(sx,sy){
+    // 近い順に拾う（画面座標上）
+    const nodes = allNodes();
+    let best = null, bestD = 1e9;
+    for(const n of nodes){
+      const {u,v} = worldToIso(n.x,n.y);
+      const p = isoToScreen(u,v);
+      const st = nodeStyle(n.kind);
+      const d = Math.hypot(p.sx - sx, p.sy - sy);
+      if(d < st.r + 10 && d < bestD){
+        best = n; bestD = d;
+      }
+    }
+    return best;
+  }
 
-function buildRoute(){
- edges=[];
- const nodes=[hq,...chosenStations];
- const used=new Set([0]);
- const best=Array(nodes.length);
- for(let i=1;i<nodes.length;i++)best[i]={from:0,d:d2(nodes[0],nodes[i])};
- while(used.size<nodes.length){
-   let pick=-1,bd=Infinity;
-   for(let i=1;i<nodes.length;i++)
-     if(!used.has(i)&&best[i].d<bd){bd=best[i].d;pick=i}
-   if(pick<0)break;
-   used.add(pick);
-   edges.push({a:nodes[best[pick].from],b:nodes[pick]});
-   for(let i=1;i<nodes.length;i++){
-     if(!used.has(i)){
-       const d=d2(nodes[pick],nodes[i]);
-       if(d<best[i].d)best[i]={from:pick,d};
-     }
-   }
- }
-}
+  // ====== 配置ルール（雪原リング内のみ） ======
+  function withinSnowRing(x,y){
+    const R = +elSnowR.value || 0;
+    const d = Math.hypot(x - SUN.x, y - SUN.y);
+    return d <= R;
+  }
 
-document.getElementById("build").onclick=()=>{
- chooseStations();
- buildRoute();
- draw();
-};
+  // ====== 座標整形（0..1199） ======
+  function clampWorld(p){
+    return { x: clamp(p.x, 0, W-1), y: clamp(p.y, 0, H-1) };
+  }
 
-document.getElementById("applyHQ").onclick=()=>{
- hq.x=+hqX.value;hq.y=+hqY.value;draw();
-};
+  // ====== 選択 ======
+  let selectedId = null;
 
-document.getElementById("reset").onclick=()=>{
- selectedEffects.clear();chosenStations=[];edges=[];draw();
-};
+  function copyText(t){
+    navigator.clipboard?.writeText(t).then(()=>toast("コピー: " + t)).catch(()=>toast("コピーできなかった…", true));
+  }
 
-const effPanel=document.getElementById("effPanel");
-const effList=document.getElementById("effList");
-document.getElementById("openEff").onclick=()=>{
- effList.innerHTML="";
- for(const e of EFFECTS){
-   const d=document.createElement("div");
-   d.className="effect";
-   d.innerHTML=`<label><input type="checkbox"> ${e.name}</label>
-     <span class="dot" style="background:${e.c}"></span>`;
-   const chk=d.querySelector("input");
-   chk.checked=selectedEffects.has(e.id);
-   chk.onchange=()=>chk.checked?selectedEffects.add(e.id):selectedEffects.delete(e.id);
-   effList.appendChild(d);
- }
- effPanel.classList.add("open");
-};
+  // ====== 入力（ピンチ&ドラッグ安定版） ======
+  // Pointer Eventsで統一（Safari OK）
+  const pointers = new Map(); // id -> {x,y}
+  let gesture = null; // { type:"pan"/"pinch", startCam, startDist, startMid }
+  let moved = false;
 
-function centerSun(){
- const p=iso(SUN.x,SUN.y);
- cam.x=-p.sx*cam.s;cam.y=-p.sy*cam.s;
-}
-centerSun();draw();
+  cv.addEventListener("pointerdown", (e) => {
+    cv.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    moved = false;
 
-// pan/zoom
-let last=null;
-canvas.addEventListener("pointerdown",e=>{last={x:e.clientX,y:e.clientY}});
-canvas.addEventListener("pointermove",e=>{
- if(!last)return;
- cam.x+=e.clientX-last.x;
- cam.y+=e.clientY-last.y;
- last={x:e.clientX,y:e.clientY};
- draw();
-});
-canvas.addEventListener("pointerup",()=>last=null);
-canvas.addEventListener("wheel",e=>{
- cam.s*=e.deltaY>0?0.9:1.1;
- cam.s=Math.max(0.4,Math.min(3,cam.s));
- draw();
-});
+    if(pointers.size === 1){
+      // pan開始
+      const p = [...pointers.values()][0];
+      gesture = { type:"pan", startX:p.x, startY:p.y, startCamX:cam.x, startCamY:cam.y };
+    }else if(pointers.size === 2){
+      const ps = [...pointers.values()];
+      const mid = { x:(ps[0].x+ps[1].x)/2, y:(ps[0].y+ps[1].y)/2 };
+      const dist = Math.hypot(ps[0].x-ps[1].x, ps[0].y-ps[1].y);
+      gesture = {
+        type:"pinch",
+        startMid:mid,
+        startDist:dist,
+        startCamX:cam.x, startCamY:cam.y,
+        startScale:cam.s
+      };
+    }
+  }, {passive:false});
+
+  cv.addEventListener("pointermove", (e) => {
+    if(!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+
+    if(!gesture) return;
+    if(gesture.type === "pan" && pointers.size === 1){
+      const p = [...pointers.values()][0];
+      const dx = p.x - gesture.startX;
+      const dy = p.y - gesture.startY;
+      if(Math.hypot(dx,dy) > 3) moved = true;
+      cam.x = gesture.startCamX + dx;
+      cam.y = gesture.startCamY + dy;
+      draw();
+    }
+    if(gesture.type === "pinch" && pointers.size === 2){
+      const ps = [...pointers.values()];
+      const mid = { x:(ps[0].x+ps[1].x)/2, y:(ps[0].y+ps[1].y)/2 };
+      const dist = Math.hypot(ps[0].x-ps[1].x, ps[0].y-ps[1].y);
+      const scale = clamp(gesture.startScale * (dist / gesture.startDist), 0.28, 2.3);
+
+      // ピンチ中心を基準にズーム（ズレない）
+      // 画面上のmidが同じワールド点を指すように cam.x/y を調整
+      const before = screenToIso(mid.x, mid.y);
+      cam.s = scale;
+      const after = screenToIso(mid.x, mid.y);
+
+      cam.x += (after.u - before.u) * cam.s;
+      cam.y += (after.v - before.v) * cam.s;
+
+      moved = true;
+      draw();
+    }
+  }, {passive:false});
+
+  cv.addEventListener("pointerup", (e) => {
+    pointers.delete(e.pointerId);
+    if(pointers.size === 0){
+      // タップ判定（動いてなければタップ）
+      if(!moved){
+        const rect = cv.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        onTap(sx,sy);
+      }
+      gesture = null;
+    } else if(pointers.size === 1){
+      // pinch -> panへ移行
+      const p = [...pointers.values()][0];
+      gesture = { type:"pan", startX:p.x, startY:p.y, startCamX:cam.x, startCamY:cam.y };
+    }
+  }, {passive:false});
+
+  cv.addEventListener("pointercancel", (e) => {
+    pointers.delete(e.pointerId);
+    if(pointers.size === 0) gesture = null;
+  }, {passive:true});
+
+  // ====== タップ処理 ======
+  function onTap(sx,sy){
+    const mode = elMode.value;
+    const hit = hitTest(sx,sy);
+
+    if(mode === "select"){
+      if(hit){
+        selectedId = hit.id;
+        const t = `${hit.label} (${Math.round(hit.x)},${Math.round(hit.y)})`;
+        toast("選択: " + t);
+        copyText(`${Math.round(hit.x)},${Math.round(hit.y)}`);
+        draw();
+      }else{
+        selectedId = null;
+        draw();
+      }
+      return;
+    }
+
+    if(mode === "delete"){
+      if(hit && hit.kind === "hq"){
+        HQS = HQS.filter(h=>h.id !== hit.id);
+        if(selectedId === hit.id) selectedId = null;
+        toast("HQ削除: " + hit.label);
+        draw();
+      }else{
+        toast("削除できるのはHQだけ", true);
+      }
+      return;
+    }
+
+    // add_hq
+    const w = clampWorld(screenToWorld(sx,sy));
+    if(!withinSnowRing(w.x,w.y)){
+      toast("雪原リング外なのでHQ置けない", true);
+      return;
+    }
+    const id = crypto.randomUUID();
+    const hq = { id, kind:"hq", x: Math.round(w.x), y: Math.round(w.y), label:`HQ${HQS.length+1}` };
+    HQS.push(hq);
+    selectedId = id;
+    toast("HQ追加: " + hq.label);
+    draw();
+  }
+
+  // ====== 描画 ======
+  function draw(){
+    const w = cv.clientWidth, h = cv.clientHeight;
+    ctx.clearRect(0,0,w,h);
+
+    // 背景
+    ctx.fillStyle = "#0b1020";
+    ctx.fillRect(0,0,w,h);
+
+    // グリッド（アイソメ）
+    drawIsoGrid();
+
+    // 雪原リング（ルール可視化）
+    drawSnowRing();
+
+    // ノード
+    for(const n of allNodes()){
+      drawNode(n);
+    }
+
+    // 選択距離円
+    const sel = allNodes().find(n=>n.id===selectedId);
+    if(sel) drawDistanceCircle(sel, +elDist.value || 0);
+  }
+
+  function drawIsoGrid(){
+    // ワールドの四隅をiso化して、見える範囲内で線を引く簡易グリッド
+    // 1マス=10（好きに調整）
+    const step = 20;
+
+    // 画面で見えるiso範囲をざっくり取得
+    const pad = 120;
+    const topLeft = screenToIso(-pad, -pad);
+    const botRight = screenToIso(cv.clientWidth+pad, cv.clientHeight+pad);
+
+    // isoはuが横、vが縦
+    const uMin = Math.floor(Math.min(topLeft.u, botRight.u) / step) * step;
+    const uMax = Math.ceil(Math.max(topLeft.u, botRight.u) / step) * step;
+    const vMin = Math.floor(Math.min(topLeft.v, botRight.v) / step) * step;
+    const vMax = Math.ceil(Math.max(topLeft.v, botRight.v) / step) * step;
+
+    ctx.lineWidth = 1;
+
+    // u一定の線（斜め）
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    for(let u=uMin; u<=uMax; u+=step){
+      const p1 = isoToScreen(u, vMin);
+      const p2 = isoToScreen(u, vMax);
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, p1.sy);
+      ctx.lineTo(p2.sx, p2.sy);
+      ctx.stroke();
+    }
+
+    // v一定の線（斜め反対）
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    for(let v=vMin; v<=vMax; v+=step){
+      const p1 = isoToScreen(uMin, v);
+      const p2 = isoToScreen(uMax, v);
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, p1.sy);
+      ctx.lineTo(p2.sx, p2.sy);
+      ctx.stroke();
+    }
+  }
+
+  function drawSnowRing(){
+    const R = +elSnowR.value || 0;
+    if(R <= 0) return;
+    // 円を多角形で近似してiso投影して描く
+    const N = 120;
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6,6]);
+
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const a = (i/N)*Math.PI*2;
+      const x = SUN.x + Math.cos(a)*R;
+      const y = SUN.y + Math.sin(a)*R;
+      const {u,v} = worldToIso(x,y);
+      const p = isoToScreen(u,v);
+      if(i===0) ctx.moveTo(p.sx,p.sy); else ctx.lineTo(p.sx,p.sy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawNode(n){
+    const {u,v} = worldToIso(n.x,n.y);
+    const p = isoToScreen(u,v);
+    const st = nodeStyle(n.kind);
+
+    // シャドウ
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(p.sx, p.sy + st.r*0.85, st.r*0.9, st.r*0.45, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // 本体
+    ctx.fillStyle = st.fill;
+    ctx.strokeStyle = st.stroke;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(p.sx - st.r, p.sy - st.r, st.r*2, st.r*2, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // 選択枠
+    if(n.id === selectedId){
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(p.sx - st.r - 6, p.sy - st.r - 6, (st.r*2)+12, (st.r*2)+12, 10);
+      ctx.stroke();
+    }
+
+    // ラベル
+    ctx.font = "12px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillText(n.label, p.sx+1, p.sy - st.r - 8 + 1);
+    ctx.fillStyle = "#e9eefc";
+    ctx.fillText(n.label, p.sx, p.sy - st.r - 8);
+  }
+
+  function drawDistanceCircle(n, dist){
+    if(!dist || dist<=0) return;
+    // これも多角形近似してiso投影
+    const N = 96;
+    ctx.strokeStyle = "rgba(90,162,255,0.35)";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const a = (i/N)*Math.PI*2;
+      const x = n.x + Math.cos(a)*dist;
+      const y = n.y + Math.sin(a)*dist;
+      const {u,v} = worldToIso(x,y);
+      const p = isoToScreen(u,v);
+      if(i===0) ctx.moveTo(p.sx,p.sy); else ctx.lineTo(p.sx,p.sy);
+    }
+    ctx.stroke();
+  }
+
+  // 初期センター（太陽城を真ん中へ）
+  (function centerOnSun(){
+    const {u,v} = worldToIso(SUN.x,SUN.y);
+    const p = isoToScreen(u,v);
+    cam.x += (cv.clientWidth/2 - p.sx);
+    cam.y += (cv.clientHeight/2 - p.sy);
+  })();
+
+  draw();
+
+  // roundRect polyfill (Safari OK)
+  if(!CanvasRenderingContext2D.prototype.roundRect){
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+      r = Math.min(r, w/2, h/2);
+      this.beginPath();
+      this.moveTo(x+r, y);
+      this.arcTo(x+w, y, x+w, y+h, r);
+      this.arcTo(x+w, y+h, x, y+h, r);
+      this.arcTo(x, y+h, x, y, r);
+      this.arcTo(x, y, x+w, y, r);
+      this.closePath();
+      return this;
+    };
+  }
+})();
 </script>
 </body>
 </html>
