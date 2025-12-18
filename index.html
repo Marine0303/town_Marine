@@ -2,1120 +2,247 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>WOS 旗ルート（HQ→ステ）完成版</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>建築ガチ勢</title>
 <style>
-  :root{ --headerH: 112px; }
-  html,body{
-    margin:0; height:100dvh; overflow:hidden;
-    background:#050b1a; color:#e9eefc; font-family:system-ui;
-  }
-  header{
-    position:fixed; left:0; right:0; top:0; z-index:10;
-    padding:10px; padding-top:calc(10px + env(safe-area-inset-top));
-    background:rgba(10,16,40,.95);
-    border-bottom:1px solid rgba(255,255,255,.12);
-    backdrop-filter: blur(8px);
-  }
-  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .pill{
-    padding:6px 10px; border:1px solid rgba(255,255,255,.18);
-    border-radius:999px; background:#0b1433;
-  }
-  input,button,select{
-    background:#0f1b44; color:#e9eefc;
-    border:1px solid rgba(255,255,255,.18);
-    border-radius:10px; padding:8px 10px; font-size:13px;
-  }
-  button{ cursor:pointer; }
-  .mini{ font-size:12px; opacity:.85; }
-  #wrap{
-    position:fixed; left:0; right:0; bottom:0;
-    top:var(--headerH);
-    display:flex;
-  }
-  #c{
-    flex:1;
-    width:100vw;
-    height:calc(100dvh - var(--headerH));
-    touch-action:none;
-  }
-  #panel{
-    width:330px;
-    background:#070f28;
-    border-left:1px solid rgba(255,255,255,.12);
-    overflow:auto;
-    padding:10px;
-  }
-  details{
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:12px;
-    padding:8px 10px;
-    margin-bottom:10px;
-    background:rgba(255,255,255,.03);
-  }
-  summary{ cursor:pointer; font-weight:700; }
-  .note{ font-size:12px; opacity:.82; line-height:1.45; }
-  .list{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  label.chk{
-    display:flex; gap:8px; align-items:center;
-    border:1px solid rgba(255,255,255,.10);
-    border-radius:10px; padding:6px 8px;
-    background:rgba(0,0,0,.15);
-    user-select:none;
-  }
-  label.chk input{ transform:scale(1.1); }
-  .stationRow{
-    display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:center;
-    padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.10);
-  }
-  .stationRow small{ opacity:.8; }
-  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-  .btnbar{ display:flex; gap:8px; flex-wrap:wrap; }
-  #toast{
-    position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
-    background:rgba(0,0,0,.75);
-    border:1px solid rgba(255,255,255,.18);
-    padding:10px 12px; border-radius:12px;
-    font-size:13px; max-width:92vw;
-    opacity:0; pointer-events:none;
-    transition:opacity .18s ease;
-    z-index:999;
-    white-space:pre-wrap;
-  }
-  #toast.show{ opacity:1; }
+html,body{margin:0;height:100%;background:#050b1a;color:#e9eefc;font-family:system-ui;overflow:hidden}
+header{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  background:rgba(8,14,34,.92);backdrop-filter:blur(8px);
+  padding:10px;border-bottom:1px solid rgba(255,255,255,.1)
+}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,input{
+  background:#0f1b44;color:#fff;border:1px solid rgba(255,255,255,.2);
+  border-radius:10px;padding:8px 10px;font-size:13px
+}
+button.primary{background:#2b7cff;font-weight:700}
+label{font-size:12px;opacity:.8}
+#c{position:fixed;top:72px;left:0;right:0;bottom:0;touch-action:none}
+
+.panel{
+  position:fixed;top:80px;left:10px;right:10px;
+  background:rgba(10,16,40,.96);border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;padding:12px;display:none;z-index:20
+}
+.panel.open{display:block}
+.effect{display:flex;justify-content:space-between;align-items:center;
+  padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.08);
+  margin-bottom:6px}
+.dot{width:10px;height:10px;border-radius:50%}
 </style>
 </head>
-
 <body>
-<header id="hdr">
+
+<header>
   <div class="row">
-    <span class="pill">WOS 旗ルート（HQ→ステ）</span>
-
-    <span class="mini">同盟</span>
-    <select id="allianceSel"></select>
-    <button id="addAlliance">追加</button>
-    <button id="delAlliance">削除</button>
-
-    <span class="mini">色</span>
-    <input id="allianceColor" type="color" value="#2b7cff">
-
-    <span class="mini">HQ</span>
-    <input id="hqX" type="number" value="520" style="width:82px">
-    <input id="hqY" type="number" value="520" style="width:82px">
-    <button id="applyHQ">座標反映</button>
-
-    <button id="decide">決定（ルート）</button>
-    <button id="copyRoute">繋いだ一覧コピー</button>
-
-    <button id="centerSun">太陽城へ</button>
-    <button id="resetView">表示リセット</button>
-  </div>
-  <div class="row">
-    <span class="mini">ヒント:</span>
-    <span class="mini">ステをタップ→座標表示（自動コピー） / HQは雪原リング内だけ</span>
-    <button id="saveJSON">保存(JSON)</button>
-    <button id="loadJSON">読込(JSON)</button>
+    <strong>WOS 旗ルート</strong>
+    <label>HQ X</label><input id="hqX" type="number" value="520" style="width:70px">
+    <label>HQ Y</label><input id="hqY" type="number" value="520" style="width:70px">
+    <button id="applyHQ">HQ反映</button>
+    <button id="openEff">効果選択</button>
+    <button id="build" class="primary">ルート作成</button>
+    <button id="reset">リセット</button>
   </div>
 </header>
 
-<div id="wrap">
-  <canvas id="c"></canvas>
+<canvas id="c"></canvas>
 
-  <aside id="panel">
-    <details open>
-      <summary>1) 欲しい効果（重複不可）</summary>
-      <p class="note">
-        効果「種類」を選ぶ（重複不可）。<br>
-        その効果がどのステにあるかは 2) で割り当ててね。<br>
-        ※同じ効果を複数ステに割当OK（決定時にHQ最寄りを採用）
-      </p>
-      <div class="list" id="effectChecks"></div>
-    </details>
-
-    <details open>
-      <summary>2) ステに効果を割り当て</summary>
-      <div class="btnbar">
-        <input id="stationFilter" placeholder="検索: S12 / 520 / atk" style="flex:1; min-width:140px;">
-        <select id="filterEffect" style="min-width:140px;">
-          <option value="">効果で絞り込み（全て）</option>
-        </select>
-      </div>
-      <div class="btnbar" style="margin-top:8px;">
-        <button id="clearAssignments">割当全消し</button>
-      </div>
-      <div id="stationList" style="margin-top:10px;"></div>
-    </details>
-
-    <details>
-      <summary>3) 結果</summary>
-      <div id="resultBox" class="note"></div>
-    </details>
-  </aside>
+<div id="effPanel" class="panel">
+  <strong>欲しい効果（重複不可）</strong>
+  <div id="effList"></div>
+  <button onclick="effPanel.classList.remove('open')">閉じる</button>
 </div>
 
-<div id="toast"></div>
-
 <script>
-(() => {
-  // ========================
-  // 見た目・制限（ここだけ触れば調整できる）
-  // ========================
-
-  // HQ建設可能リング： d = |dx|+|dy| の範囲で制御（WOSっぽい菱形）
-  // 中央禁止（太陽城周辺）と外周禁止を作る
-  const BUILD_RING = {
-    inner: 260,   // これより内側は建設不可（中央帯）
-    outer: 780    // これより外側は建設不可（外周）
-  };
-
-  // ヒット判定（ステタップしやすさ）
-  const HIT_RADIUS_PX = 14;
-
-  // ========================
-  // 効果タイプ（全12種）
-  // ========================
-  const EFFECTS = [
-    { id:"production", label:"生産" },
-    { id:"gathering", label:"採取" },
-    { id:"march", label:"行軍速度" },
-    { id:"atk5", label:"攻撃 +5%" },
-    { id:"atk8", label:"攻撃 +8%" },
-    { id:"def5", label:"防御 +5%" },
-    { id:"def8", label:"防御 +8%" },
-    { id:"training", label:"訓練" },
-    { id:"research5", label:"研究 +5%" },
-    { id:"research8", label:"研究 +8%" },
-    { id:"build5", label:"建築 +5%" },
-    { id:"build8", label:"建築 +8%" },
-  ];
-  const EFFECT_BY_ID = Object.fromEntries(EFFECTS.map(e=>[e.id,e]));
-  const EFFECT_OPTIONS_HTML = [
-    `<option value="">未設定</option>`,
-    ...EFFECTS.map(e=>`<option value="${e.id}">${e.label}</option>`)
-  ].join("");
-
-  // ========================
-  // 固定施設（絶対表示）
-  // ========================
-  const SUN = { x:597, y:597, label:"太陽城" };
-
-  const FORTRESSES = [
-    { x:597, y:800, label:"要塞1" },
-    { x:400, y:597, label:"要塞2" },
-    { x:597, y:400, label:"要塞3" },
-    { x:800, y:597, label:"要塞4" },
-  ];
-
-  const FORTS = [
-    { x:237, y:828, label:"砦" },
-    { x:237, y:606, label:"砦" },
-    { x:237, y:348, label:"砦" },
-    { x:366, y:237, label:"砦" },
-    { x:588, y:137, label:"砦" },
-    { x:846, y:237, label:"砦" },
-    { x:957, y:348, label:"砦" },
-    { x:957, y:606, label:"砦" },
-    { x:957, y:828, label:"砦" },
-    { x:846, y:957, label:"砦" },
-    { x:606, y:957, label:"砦" },
-    { x:306, y:957, label:"砦" },
-  ];
-
-  // ステーション（74）絶対表示（点のみ）
-  const STATIONS_RAW = [
-    [138,327],[138,957],[237,138],[327,1038],[768,138],[957,1068],
-    [1068,237],[1068,747],[87,666],[138,237],[267,1068],[537,87],
-    [636,1137],[957,138],[1068,936],[1137,567],[138,138],[138,666],
-    [138,1038],[537,138],[666,1068],[1068,138],[1068,567],[1068,1068],
-    [327,666],[486,327],[768,867],[867,567],[237,237],[237,957],
-    [267,537],[537,936],[666,267],[957,237],[936,537],[957,957],
-    [327,327],[327,867],[867,327],[867,867],[138,747],[237,486],
-    [486,138],[486,957],[768,237],[768,1038],[957,747],[1068,486],
-    [138,438],[138,867],[366,138],[438,1068],[666,138],[738,957],
-    [957,438],[1068,666],[387,486],[588,867],[816,486],[387,717],
-    [588,327],[816,717],[327,567],[486,867],[768,327],[867,666]
-  ];
-  const STATIONS = STATIONS_RAW.map(([x,y],i)=>({ id:i+1, x,y, effect:"" }));
-
-  // ========================
-  // UI
-  // ========================
-  const canvas = document.getElementById("c");
-  const ctx = canvas.getContext("2d");
-  const hdr = document.getElementById("hdr");
-  const toast = document.getElementById("toast");
-
-  const allianceSel = document.getElementById("allianceSel");
-  const allianceColor = document.getElementById("allianceColor");
-  const hqX = document.getElementById("hqX");
-  const hqY = document.getElementById("hqY");
-
-  const effectChecks = document.getElementById("effectChecks");
-  const stationList = document.getElementById("stationList");
-  const stationFilter = document.getElementById("stationFilter");
-  const filterEffect = document.getElementById("filterEffect");
-  const resultBox = document.getElementById("resultBox");
-
-  // ========================
-  // Map transform
-  // ========================
-  const SCALE = 0.8;
-  const TILE_W = 40;
-  const TILE_H = 20;
-  const cam = { x:0, y:0, s:1 };
-  const BASE = { x:0, y:0 };
-
-  function updateHeaderH(){
-    const h = Math.ceil(hdr.getBoundingClientRect().height);
-    document.documentElement.style.setProperty("--headerH", `${h}px`);
-  }
-  function resizeCanvas(){
-    updateHeaderH();
-    const r = canvas.getBoundingClientRect();
-    const w = Math.max(1, Math.floor(r.width * devicePixelRatio));
-    const h = Math.max(1, Math.floor(r.height * devicePixelRatio));
-    if (canvas.width !== w || canvas.height !== h){
-      canvas.width = w; canvas.height = h;
-      ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-    }
-    BASE.x = r.width/2;
-    BASE.y = r.height/2;
-  }
-
-  function iso(x,y){
-    return { sx:(x-y)*SCALE, sy:(x+y)*SCALE*0.5 };
-  }
-
-  // 画面→実座標（逆変換）
-  function screenToReal(px, py){
-    const x = (px - BASE.x - cam.x) / cam.s;
-    const y = (py - BASE.y - cam.y) / cam.s;
-    const X = (y/(SCALE*0.5) + x/SCALE) / 2;
-    const Y = (y/(SCALE*0.5) - x/SCALE) / 2;
-    return { x: Math.round(X), y: Math.round(Y) };
-  }
-
-  function dist(a,b){
-    const dx=a.x-b.x, dy=a.y-b.y;
-    return Math.sqrt(dx*dx+dy*dy);
-  }
-
-  // 菱形距離（WOS風リング判定）
-  function diamondD(p){
-    return Math.abs(p.x - SUN.x) + Math.abs(p.y - SUN.y);
-  }
-  function inBuildRing(p){
-    const d = diamondD(p);
-    return d >= BUILD_RING.inner && d <= BUILD_RING.outer;
-  }
-
-  // 不正なHQ座標を近い位置に押し戻す（入力でもドラッグでも安全）
-  function clampToBuildRing(p){
-    let d = diamondD(p);
-    if (d === 0) d = 1;
-    if (d < BUILD_RING.inner) {
-      const k = BUILD_RING.inner / d;
-      return {
-        x: Math.round(SUN.x + (p.x - SUN.x) * k),
-        y: Math.round(SUN.y + (p.y - SUN.y) * k),
-      };
-    }
-    if (d > BUILD_RING.outer) {
-      const k = BUILD_RING.outer / d;
-      return {
-        x: Math.round(SUN.x + (p.x - SUN.x) * k),
-        y: Math.round(SUN.y + (p.y - SUN.y) * k),
-      };
-    }
-    return p;
-  }
-
-  // ========================
-  // Alliances（複数同盟OK）
-  // ========================
-  let alliances = [
-    {
-      id: crypto.randomUUID?.() || String(Math.random()),
-      name:"N9Q",
-      color:"#2b7cff",
-      hq:{ x:520, y:520 },
-      wanted: new Set(),
-      chosenStations: [],
-      edges: []
-    }
-  ];
-  let activeAllianceId = alliances[0].id;
-
-  function activeAlliance(){
-    return alliances.find(a=>a.id===activeAllianceId) || alliances[0];
-  }
-
-  function refreshAllianceSelect(){
-    allianceSel.innerHTML = alliances.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
-    allianceSel.value = activeAllianceId;
-
-    const a = activeAlliance();
-    allianceColor.value = a.color;
-    hqX.value = a.hq.x;
-    hqY.value = a.hq.y;
-
-    // wanted反映
-    for (const cb of effectChecks.querySelectorAll("input[type=checkbox]")){
-      cb.checked = a.wanted.has(cb.value);
-    }
-
-    draw();
-  }
-
-  // ========================
-  // Effects UI（重複不可＝自然に満たされる）
-  // ========================
-  function renderEffectChecks(){
-    effectChecks.innerHTML = "";
-    for(const e of EFFECTS){
-      const label = document.createElement("label");
-      label.className = "chk";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.value = e.id;
-      cb.addEventListener("change", ()=>{
-        const a = activeAlliance();
-        if(cb.checked) a.wanted.add(e.id);
-        else a.wanted.delete(e.id);
-      });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(e.label));
-      effectChecks.appendChild(label);
-    }
-
-    filterEffect.innerHTML =
-      `<option value="">効果で絞り込み（全て）</option>` +
-      EFFECTS.map(e=>`<option value="${e.id}">${e.label}</option>`).join("");
-  }
-
-  // ========================
-  // Station assignment list
-  // ========================
-  function matchesFilter(st){
-    const q = (stationFilter.value || "").trim().toLowerCase();
-    const eff = filterEffect.value;
-
-    if(eff && st.effect !== eff) return false;
-    if(!q) return true;
-
-    const s = `s${st.id} ${st.x} ${st.y} ${(st.effect||"")}`.toLowerCase();
-    return s.includes(q);
-  }
-
-  function renderStationList(){
-    stationList.innerHTML = "";
-    const frag = document.createDocumentFragment();
-
-    for(const st of STATIONS){
-      if(!matchesFilter(st)) continue;
-
-      const row = document.createElement("div");
-      row.className = "stationRow";
-
-      const left = document.createElement("div");
-      left.innerHTML = `<div><strong>S${st.id}</strong> <small class="mono">(${st.x},${st.y})</small></div>
-                        <small>${st.effect ? ("効果: " + EFFECT_BY_ID[st.effect].label) : "効果: 未設定"}</small>`;
-
-      const sel = document.createElement("select");
-      sel.innerHTML = EFFECT_OPTIONS_HTML;
-      sel.value = st.effect || "";
-      sel.addEventListener("change", ()=>{
-        st.effect = sel.value;
-        const a = activeAlliance();
-        a.chosenStations = [];
-        a.edges = [];
-        resultBox.innerHTML = "";
-        renderStationList();
-        draw();
-      });
-
-      row.appendChild(left);
-      row.appendChild(sel);
-      frag.appendChild(row);
-    }
-    stationList.appendChild(frag);
-  }
-
-  stationFilter.addEventListener("input", renderStationList);
-  filterEffect.addEventListener("change", renderStationList);
-
-  document.getElementById("clearAssignments").addEventListener("click", ()=>{
-    for(const st of STATIONS) st.effect = "";
-    const a = activeAlliance();
-    a.chosenStations = [];
-    a.edges = [];
-    stationFilter.value = "";
-    filterEffect.value = "";
-    resultBox.innerHTML = "";
-    renderStationList();
-    draw();
-    showToast("割当を全消ししました");
-  });
-
-  // ========================
-  // Route logic
-  // ========================
-  function chooseStationsForAlliance(a){
-    const chosen = [];
-    const missing = [];
-
-    for(const eff of a.wanted){
-      const candidates = STATIONS.filter(s=>s.effect === eff);
-      if(candidates.length === 0){
-        missing.push(eff);
-        continue;
-      }
-      let best = candidates[0];
-      let bestD = dist(a.hq, best);
-      for(const s of candidates.slice(1)){
-        const d = dist(a.hq, s);
-        if(d < bestD){ best = s; bestD = d; }
-      }
-      chosen.push(best);
-    }
-    return { chosen, missing };
-  }
-
-  function computeRouteTree(a, nodes){
-    const connected = [{ kind:"hq", x:a.hq.x, y:a.hq.y, label:"HQ" }];
-    const remaining = nodes.map(s=>({ kind:"st", id:s.id, x:s.x, y:s.y, effect:s.effect, label:`S${s.id}` }));
-
-    const edges = [];
-    while(remaining.length){
-      let bestI = -1, bestFrom=null, bestTo=null, bestD=Infinity;
-      for(const from of connected){
-        for(let i=0;i<remaining.length;i++){
-          const to = remaining[i];
-          const d = dist(from, to);
-          if(d < bestD){
-            bestD = d; bestI = i; bestFrom = from; bestTo = to;
-          }
-        }
-      }
-      edges.push({ from: bestFrom, to: bestTo, d: bestD });
-      connected.push(bestTo);
-      remaining.splice(bestI,1);
-    }
-    return edges;
-  }
-
-  function buildResultText(a, missing){
-    const lines = [];
-    lines.push(`【${a.name} 旗ルート】`);
-    lines.push(`HQ: (${a.hq.x}, ${a.hq.y})`);
-    lines.push("");
-
-    lines.push("採用ステーション:");
-    if(!a.chosenStations.length){
-      lines.push("（なし）");
-    }else{
-      for(const s of a.chosenStations){
-        lines.push(`・${EFFECT_BY_ID[s.effect].label} → S${s.id} (${s.x},${s.y})`);
-      }
-    }
-
-    if(missing.length){
-      lines.push("");
-      lines.push("未割当（効果ステ未設定）:");
-      for(const eff of missing){
-        lines.push(`・${EFFECT_BY_ID[eff].label}`);
-      }
-    }
-
-    lines.push("");
-    lines.push("ルート:");
-    if(!a.edges.length){
-      lines.push("（なし）");
-    }else{
-      for(const e of a.edges){
-        const f = (e.from.kind==="hq") ? "HQ" : e.from.label;
-        lines.push(`・${f} → ${e.to.label}`);
-      }
-    }
-    return lines.join("\n");
-  }
-
-  // ========================
-  // Toast & Clipboard
-  // ========================
-  let toastTimer = null;
-  function showToast(msg){
-    toast.textContent = msg;
-    toast.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=>toast.classList.remove("show"), 1800);
-  }
-
-  async function copyText(text){
-    try{
-      await navigator.clipboard.writeText(text);
-      return true;
-    }catch(e){
-      // iOSで失敗する場合があるのでフォールバック
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position="fixed";
-      ta.style.left="-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      return ok;
-    }
-  }
-
-  // ========================
-  // Buttons
-  // ========================
-  document.getElementById("applyHQ").addEventListener("click", ()=>{
-    const a = activeAlliance();
-    const candidate = { x:Number(hqX.value), y:Number(hqY.value) };
-
-    if(!inBuildRing(candidate)){
-      // 近い場所へ押し戻す（ユーザーに優しい）
-      const fixed = clampToBuildRing(candidate);
-      showToast(`HQは雪原のみ！\n入力は範囲外→近い雪原へ補正: (${fixed.x},${fixed.y})`);
-      a.hq = fixed;
-      hqX.value = fixed.x;
-      hqY.value = fixed.y;
-    }else{
-      a.hq = candidate;
-      showToast(`HQ反映: (${a.hq.x},${a.hq.y})`);
-    }
-
-    a.color = allianceColor.value;
-    a.chosenStations = [];
-    a.edges = [];
-    resultBox.innerHTML = "";
-    draw();
-  });
-
-  document.getElementById("decide").addEventListener("click", ()=>{
-    const a = activeAlliance();
-
-    // HQ入力反映（雪原制限）
-    const candidate = { x:Number(hqX.value), y:Number(hqY.value) };
-    if(!inBuildRing(candidate)){
-      const fixed = clampToBuildRing(candidate);
-      showToast(`HQは雪原のみ！\n範囲外→補正: (${fixed.x},${fixed.y})`);
-      a.hq = fixed;
-      hqX.value = fixed.x; hqY.value = fixed.y;
-    }else{
-      a.hq = candidate;
-    }
-    a.color = allianceColor.value;
-
-    const { chosen, missing } = chooseStationsForAlliance(a);
-    a.chosenStations = chosen;
-    a.edges = computeRouteTree(a, chosen);
-
-    // 結果表示
-    const html = [];
-    html.push(`<div><strong>採用ステ</strong></div>`);
-    if(!chosen.length) html.push(`<div>（なし）</div>`);
-    for(const s of chosen){
-      html.push(`<div>・${EFFECT_BY_ID[s.effect].label} → <span class="mono">S${s.id} (${s.x},${s.y})</span></div>`);
-    }
-    if(missing.length){
-      html.push(`<div style="margin-top:8px;"><strong>未割当</strong></div>`);
-      for(const eff of missing){
-        html.push(`<div>・${EFFECT_BY_ID[eff].label}</div>`);
-      }
-    }
-    html.push(`<div style="margin-top:8px;"><strong>ルート</strong></div>`);
-    if(!a.edges.length) html.push(`<div>（なし）</div>`);
-    for(const e of a.edges){
-      const f = (e.from.kind==="hq") ? "HQ" : e.from.label;
-      html.push(`<div>・${f} → ${e.to.label}</div>`);
-    }
-    resultBox.innerHTML = html.join("");
-
-    showToast("ルート計算しました");
-    draw();
-  });
-
-  document.getElementById("copyRoute").addEventListener("click", async ()=>{
-    const a = activeAlliance();
-    const missing = []; // 表示用は再計算しないでOKだが、メッセ用に簡易で作る
-    const text = buildResultText(a, missing);
-    const ok = await copyText(text);
-    showToast(ok ? "繋いだ一覧をコピーしました" : "コピー失敗…（長押しでコピーして）");
-  });
-
-  document.getElementById("centerSun").addEventListener("click", ()=>{
-    centerOnSun(true);
-  });
-
-  document.getElementById("resetView").addEventListener("click", ()=>{
-    cam.x=0; cam.y=0; cam.s=1;
-    draw();
-  });
-
-  allianceSel.addEventListener("change", ()=>{
-    activeAllianceId = allianceSel.value;
-    refreshAllianceSelect();
-    renderStationList();
-    resultBox.innerHTML = "";
-  });
-
-  allianceColor.addEventListener("input", ()=>{
-    activeAlliance().color = allianceColor.value;
-    draw();
-  });
-
-  document.getElementById("addAlliance").addEventListener("click", ()=>{
-    const name = prompt("同盟名を入力", `ALLY${alliances.length+1}`) || `ALLY${alliances.length+1}`;
-    const a = {
-      id: crypto.randomUUID?.() || String(Math.random()),
-      name,
-      color:"#2b7cff",
-      hq: clampToBuildRing({x:SUN.x+BUILD_RING.inner, y:SUN.y}), // 雪原内
-      wanted: new Set(),
-      chosenStations: [],
-      edges: []
-    };
-    alliances.push(a);
-    activeAllianceId = a.id;
-    refreshAllianceSelect();
-    showToast(`同盟追加: ${name}`);
-  });
-
-  document.getElementById("delAlliance").addEventListener("click", ()=>{
-    if(alliances.length<=1){ showToast("同盟は最低1つ必要"); return; }
-    const a = activeAlliance();
-    if(!confirm(`同盟「${a.name}」を削除する？`)) return;
-    alliances = alliances.filter(x=>x.id!==a.id);
-    activeAllianceId = alliances[0].id;
-    refreshAllianceSelect();
-    showToast("削除しました");
-  });
-
-  // ========================
-  // Save / Load
-  // ========================
-  function exportState(){
-    return {
-      version: 1,
-      buildRing: BUILD_RING,
-      stations: STATIONS.map(s=>({ id:s.id, effect:s.effect })),
-      alliances: alliances.map(a=>({
-        id:a.id, name:a.name, color:a.color, hq:a.hq,
-        wanted:[...a.wanted]
-      })),
-      activeAllianceId
-    };
-  }
-
-  function importState(obj){
-    if(!obj || obj.version!==1) throw new Error("bad version");
-
-    if(Array.isArray(obj.stations)){
-      const map = new Map(obj.stations.map(s=>[s.id, s.effect||""]));
-      for(const st of STATIONS) st.effect = map.get(st.id) || "";
-    }
-
-    if(Array.isArray(obj.alliances)){
-      alliances = obj.alliances.map(a=>({
-        id: a.id || (crypto.randomUUID?.() || String(Math.random())),
-        name: a.name || "ALLY",
-        color: a.color || "#2b7cff",
-        hq: clampToBuildRing({ x:Number(a.hq?.x)||SUN.x, y:Number(a.hq?.y)||SUN.y }),
-        wanted: new Set(Array.isArray(a.wanted)?a.wanted:[]),
-        chosenStations: [],
-        edges: []
-      }));
-      if(!alliances.length){
-        alliances = [{
-          id: crypto.randomUUID?.() || String(Math.random()),
-          name:"N9Q",
-          color:"#2b7cff",
-          hq:{x:520,y:520},
-          wanted:new Set(),
-          chosenStations:[],
-          edges:[]
-        }];
-      }
-    }
-
-    activeAllianceId =
-      obj.activeAllianceId && alliances.some(a=>a.id===obj.activeAllianceId)
-        ? obj.activeAllianceId
-        : alliances[0].id;
-
-    refreshAllianceSelect();
-    renderStationList();
-    resultBox.innerHTML = "";
-    draw();
-  }
-
-  document.getElementById("saveJSON").addEventListener("click", ()=>{
-    const json = JSON.stringify(exportState(), null, 2);
-    prompt("このJSONをコピーして保存してね", json);
-  });
-
-  document.getElementById("loadJSON").addEventListener("click", ()=>{
-    const txt = prompt("保存したJSONを貼り付けてね");
-    if(!txt) return;
-    try{
-      importState(JSON.parse(txt));
-      showToast("読み込みOK");
-    }catch(e){
-      alert("JSONが壊れてるかも…");
-    }
-  });
-
-  // ========================
-  // Drawing helpers
-  // ========================
-  function roundRect(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-  }
-
-  function diamondAt(sx,sy,w,h){
-    ctx.beginPath();
-    ctx.moveTo(sx,sy);
-    ctx.lineTo(sx + w/2, sy + h/2);
-    ctx.lineTo(sx, sy + h);
-    ctx.lineTo(sx - w/2, sy + h/2);
-    ctx.closePath();
-  }
-
-  function drawZoneDiamond(radius, fillStyle){
-    const c = SUN;
-    const corners = [
-      {x:c.x + radius, y:c.y},
-      {x:c.x, y:c.y + radius},
-      {x:c.x - radius, y:c.y},
-      {x:c.x, y:c.y - radius},
-    ].map(p=>iso(p.x,p.y));
-
-    ctx.fillStyle = fillStyle;
-    ctx.beginPath();
-    ctx.moveTo(corners[0].sx, corners[0].sy);
-    for(let i=1;i<corners.length;i++) ctx.lineTo(corners[i].sx, corners[i].sy);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // ========================
-  // Draw (シンプルで見やすい)
-  // ========================
-  function draw(){
-    resizeCanvas();
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    ctx.save();
-    ctx.translate(BASE.x + cam.x, BASE.y + cam.y);
-    ctx.scale(cam.s, cam.s);
-
-    // 背景
-    ctx.fillStyle = "#050b1a";
-    ctx.fillRect(-99999,-99999,199998,199998);
-
-    // ===== ゾーン（外周→雪原→中央） =====
-    // 外周（暗グレー）
-    drawZoneDiamond(BUILD_RING.outer + 220, "rgba(255,255,255,0.05)");
-    // 雪原（青）
-    drawZoneDiamond(BUILD_RING.outer, "rgba(80,160,255,0.12)");
-    // 中央禁止（黄）
-    drawZoneDiamond(BUILD_RING.inner, "rgba(255,210,80,0.18)");
-
-    // ===== 地面グリッド（薄く） =====
-    ctx.strokeStyle="rgba(255,255,255,.04)";
-    for(let y=0;y<=1200;y+=20){
-      for(let x=0;x<=1200;x+=20){
-        const p=iso(x,y);
-        ctx.fillStyle="rgba(180,220,255,0.035)";
-        diamondAt(p.sx, p.sy, TILE_W, TILE_H);
-        ctx.fill();
-        ctx.stroke();
-      }
-    }
-
-    // ===== ステーション（全74、点のみ・ラベルなし） =====
-    for(const s of STATIONS){
-      const p=iso(s.x,s.y);
-      ctx.fillStyle="rgba(190,240,255,0.55)";
-      ctx.beginPath();
-      ctx.arc(p.sx, p.sy, 3.2, 0, Math.PI*2);
-      ctx.fill();
-    }
-
-    // ===== 砦（12） =====
-    for(const f of FORTS){
-      const p = iso(f.x,f.y);
-      ctx.fillStyle="rgba(40,210,120,0.85)";
-      roundRect(p.sx-6, p.sy-12, 12, 12, 4);
-      ctx.fill();
-    }
-
-    // ===== 要塞（4） =====
-    for(const f of FORTRESSES){
-      const p = iso(f.x,f.y);
-      ctx.fillStyle="rgba(70,150,255,0.95)";
-      roundRect(p.sx-8, p.sy-16, 16, 16, 5);
-      ctx.fill();
-
-      // 小さくラベル（見やすさ優先で控えめ）
-      ctx.fillStyle="rgba(255,255,255,0.8)";
-      ctx.font="11px system-ui";
-      ctx.textAlign="center";
-      ctx.fillText(f.label, p.sx, p.sy-20);
-    }
-
-    // ===== 太陽城 =====
-    {
-      const p = iso(SUN.x,SUN.y);
-      ctx.fillStyle="#ffd24a";
-      roundRect(p.sx-9, p.sy-18, 18, 18, 6);
-      ctx.fill();
-      ctx.fillStyle="rgba(255,255,255,0.92)";
-      ctx.font="12px system-ui";
-      ctx.textAlign="center";
-      ctx.fillText("太陽城", p.sx, p.sy-24);
-    }
-
-    // ===== ルート（アクティブ同盟） =====
-    const a = activeAlliance();
-
-    // 線
-    if(a.edges?.length){
-      ctx.strokeStyle = a.color;
-      ctx.lineWidth = 3.5;
-      for(const e of a.edges){
-        const p1 = iso(e.from.x, e.from.y);
-        const p2 = iso(e.to.x, e.to.y);
-        ctx.beginPath();
-        ctx.moveTo(p1.sx, p1.sy);
-        ctx.lineTo(p2.sx, p2.sy);
-        ctx.stroke();
-      }
-    }
-
-    // 採用ステ（強調）
-    if(a.chosenStations?.length){
-      for(const s of a.chosenStations){
-        const p = iso(s.x,s.y);
-        ctx.fillStyle = a.color;
-        ctx.beginPath();
-        ctx.arc(p.sx, p.sy, 6.5, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle="rgba(255,255,255,0.95)";
-        ctx.lineWidth=2;
-        ctx.stroke();
-
-        // 文字は番号だけ（最小限）
-        ctx.fillStyle="rgba(255,255,255,0.95)";
-        ctx.font="10px system-ui";
-        ctx.textAlign="left";
-        ctx.fillText(`S${s.id}`, p.sx+8, p.sy-8);
-      }
-    }
-
-    // HQ（雪原制限で赤枠警告）
-    {
-      const p = iso(a.hq.x,a.hq.y);
-      const ok = inBuildRing(a.hq);
-      ctx.fillStyle = a.color;
-      roundRect(p.sx-10, p.sy-20, 20, 20, 6);
-      ctx.fill();
-
-      ctx.strokeStyle = ok ? "rgba(255,255,255,0.95)" : "rgba(255,80,80,0.95)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      ctx.fillStyle="rgba(255,255,255,0.92)";
-      ctx.font="12px system-ui";
-      ctx.textAlign="center";
-      ctx.fillText(`${a.name} HQ`, p.sx, p.sy-26);
-    }
-
-    ctx.restore();
-  }
-
-  // ========================
-  // Center view
-  // ========================
-  function centerOnSun(zoomIn){
-    const p=iso(SUN.x,SUN.y);
-    cam.x = -p.sx;
-    cam.y = -p.sy;
-    cam.s = zoomIn ? 1.25 : 1;
-    draw();
-  }
-
-  // ========================
-  // Click / Tap: station coordinate
-  // ========================
-  function findStationHit(px, py){
-    // px,py: client coords
-    const localX = (px - BASE.x - cam.x) / cam.s;
-    const localY = (py - BASE.y - cam.y) / cam.s;
-
-    let best = null;
-    let bestD = Infinity;
-
-    for(const s of STATIONS){
-      const p = iso(s.x,s.y);
-      const dx = p.sx - localX;
-      const dy = p.sy - localY;
-      const d = Math.sqrt(dx*dx + dy*dy);
-      if(d < HIT_RADIUS_PX && d < bestD){
-        best = s; bestD = d;
-      }
-    }
-    return best;
-  }
-
-  // ========================
-  // Input: drag HQ / pan / tap station
-  // ========================
-  let draggingHQ = false;
-  let panning = false;
-  let last = null;
-
-  function hitHQ(px, py){
-    const a = activeAlliance();
-    const localX = (px - BASE.x - cam.x) / cam.s;
-    const localY = (py - BASE.y - cam.y) / cam.s;
-    const p = iso(a.hq.x,a.hq.y);
-    // HQ box hit
-    return (localX >= p.sx-14 && localX <= p.sx+14 && localY >= p.sy-28 && localY <= p.sy-6);
-  }
-
-  canvas.addEventListener("pointerdown", async (e)=>{
-    canvas.setPointerCapture(e.pointerId);
-    last = {x:e.clientX, y:e.clientY};
-
-    // 1) ステを優先クリック（座標表示）
-    const st = findStationHit(e.clientX, e.clientY);
-    if(st){
-      const msg = `S${st.id} 座標: (${st.x}, ${st.y})` + (st.effect ? `\n効果: ${EFFECT_BY_ID[st.effect].label}` : "");
-      showToast(msg + "\n（座標をコピーしました）");
-      await copyText(`${st.x},${st.y}`);
-      return;
-    }
-
-    // 2) HQドラッグ判定
-    if(hitHQ(e.clientX, e.clientY)){
-      draggingHQ = true;
-      panning = false;
-      return;
-    }
-
-    // 3) それ以外はパン
-    panning = true;
-    draggingHQ = false;
-  });
-
-  canvas.addEventListener("pointermove", (e)=>{
-    if(!last) return;
-
-    const dx = e.clientX - last.x;
-    const dy = e.clientY - last.y;
-    last = {x:e.clientX, y:e.clientY};
-
-    const a = activeAlliance();
-
-    if(draggingHQ){
-      const r = screenToReal(e.clientX, e.clientY);
-      // 雪原制限：ドラッグでも外へ出さない
-      const fixed = clampToBuildRing(r);
-      a.hq = fixed;
-      hqX.value = fixed.x;
-      hqY.value = fixed.y;
-
-      // ルートは古くなるので消す（決定ボタンで再計算）
-      a.chosenStations = [];
-      a.edges = [];
-      resultBox.innerHTML = "";
-      draw();
-      return;
-    }
-
-    if(panning){
-      cam.x += dx;
-      cam.y += dy;
-      draw();
-    }
-  });
-
-  canvas.addEventListener("pointerup", ()=>{
-    draggingHQ = false;
-    panning = false;
-    last = null;
-  });
-
-  // PC zoom
-  canvas.addEventListener("wheel",(e)=>{
-    e.preventDefault();
-    const factor = Math.exp(-e.deltaY*0.001);
-    cam.s = Math.max(0.45, Math.min(2.6, cam.s*factor));
-    draw();
-  }, {passive:false});
-
-  // ========================
-  // Init UI
-  // ========================
-  function renderUI(){
-    renderEffectChecks();
-    renderStationList();
-    refreshAllianceSelect();
-  }
-
-  // ========================
-  // Filters
-  // ========================
-  function renderEffectChecks(){
-    effectChecks.innerHTML = "";
-    for(const e of EFFECTS){
-      const label = document.createElement("label");
-      label.className = "chk";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.value = e.id;
-      cb.addEventListener("change", ()=>{
-        const a = activeAlliance();
-        if(cb.checked) a.wanted.add(e.id);
-        else a.wanted.delete(e.id);
-      });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(e.label));
-      effectChecks.appendChild(label);
-    }
-
-    filterEffect.innerHTML =
-      `<option value="">効果で絞り込み（全て）</option>` +
-      EFFECTS.map(e=>`<option value="${e.id}">${e.label}</option>`).join("");
-  }
-
-  // ========================
-  // Boot
-  // ========================
-  function boot(){
-    renderUI();
-    // 初期は「太陽城が見えると安心」
-    centerOnSun(true);
-    // iOSのレイアウト安定待ちで再描画
-    setTimeout(()=>{ refreshAllianceSelect(); draw(); }, 240);
-  }
-
-  window.addEventListener("resize", ()=>setTimeout(draw, 120));
-  boot();
-
-})();
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+const SCALE = 0.6;
+const TILE = 18;
+const cam = {x:0,y:0,s:1};
+const BASE = {x:0,y:0};
+
+const SUN = {x:597,y:597};
+
+const STATIONS_RAW = [
+ [138,327],[138,957],[237,138],[327,1038],[768,138],[957,1068],
+ [1068,237],[1068,747],[87,666],[138,237],[267,1068],[537,87],
+ [636,1137],[957,138],[1068,936],[1137,567],[138,138],[138,666],
+ [138,1038],[537,138],[666,1068],[1068,138],[1068,567],[1068,1068],
+ [327,666],[486,327],[768,867],[867,567],[237,237],[237,957],
+ [267,537],[537,936],[666,267],[957,237],[936,537],[957,957],
+ [327,327],[327,867],[867,327],[867,867],[138,747],[237,486],
+ [486,138],[486,957],[768,237],[768,1038],[957,747],[1068,486],
+ [138,438],[138,867],[366,138],[438,1068],[666,138],[738,957],
+ [957,438],[1068,666],[387,486],[588,867],[816,486],[387,717],
+ [588,327],[816,717],[327,567],[486,867],[768,327],[867,666]
+];
+
+const EFFECTS = [
+ {id:"prod",name:"生産",c:"#34d399"},
+ {id:"gath",name:"採取",c:"#a3e635"},
+ {id:"march",name:"行軍速度",c:"#60a5fa"},
+ {id:"atk8",name:"攻撃8%",c:"#ef4444"},
+ {id:"def8",name:"防御8%",c:"#f59e0b"},
+ {id:"res8",name:"研究8%",c:"#8b5cf6"},
+ {id:"build8",name:"建築8%",c:"#0ea5e9"}
+];
+
+const stations = STATIONS_RAW.map(([x,y],i)=>({
+ id:i+1,x,y,effect:EFFECTS[i%EFFECTS.length].id
+}));
+
+const selectedEffects = new Set();
+let chosenStations = [];
+let edges = [];
+
+let hq = {x:520,y:520};
+
+function iso(x,y){return{sx:(x-y)*SCALE,sy:(x+y)*SCALE*0.5}}
+function d2(a,b){return (a.x-b.x)**2+(a.y-b.y)**2}
+
+function resize(){
+ const r=canvas.getBoundingClientRect();
+ canvas.width=r.width*devicePixelRatio;
+ canvas.height=r.height*devicePixelRatio;
+ ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+ BASE.x=r.width/2;BASE.y=r.height/2;
+}
+window.addEventListener("resize",resize);resize();
+
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.save();
+ ctx.translate(BASE.x+cam.x,BASE.y+cam.y);
+ ctx.scale(cam.s,cam.s);
+
+ // 背景
+ ctx.fillStyle="#071021";
+ ctx.fillRect(-2000,-2000,4000,4000);
+
+ // ステ
+ for(const s of stations){
+   const p=iso(s.x,s.y);
+   ctx.fillStyle="rgba(255,255,255,.25)";
+   ctx.beginPath();ctx.arc(p.sx,p.sy,2.5,0,Math.PI*2);ctx.fill();
+ }
+
+ // 太陽城
+ const sp=iso(SUN.x,SUN.y);
+ ctx.fillStyle="#facc15";
+ ctx.beginPath();ctx.arc(sp.sx,sp.sy,8,0,Math.PI*2);ctx.fill();
+
+ // ルート線
+ ctx.strokeStyle="#2b7cff";ctx.lineWidth=3;
+ for(const e of edges){
+   const a=iso(e.a.x,e.a.y),b=iso(e.b.x,e.b.y);
+   ctx.beginPath();ctx.moveTo(a.sx,a.sy);ctx.lineTo(b.sx,b.sy);ctx.stroke();
+ }
+
+ // HQ
+ const hp=iso(hq.x,hq.y);
+ ctx.fillStyle="#2b7cff";
+ ctx.beginPath();ctx.arc(hp.sx,hp.sy,7,0,Math.PI*2);ctx.fill();
+
+ // 選択ステ
+ for(const s of chosenStations){
+   const p=iso(s.x,s.y);
+   ctx.fillStyle="#ff3b3b";
+   ctx.beginPath();ctx.arc(p.sx,p.sy,5,0,Math.PI*2);ctx.fill();
+ }
+
+ ctx.restore();
+}
+
+function chooseStations(){
+ chosenStations=[];
+ for(const eff of selectedEffects){
+   const cands=stations.filter(s=>s.effect===eff);
+   let best=cands[0],bd=d2(hq,best);
+   for(const s of cands){
+     const d=d2(hq,s);
+     if(d<bd){bd=d;best=s}
+   }
+   chosenStations.push(best);
+ }
+}
+
+function buildRoute(){
+ edges=[];
+ const nodes=[hq,...chosenStations];
+ const used=new Set([0]);
+ const best=Array(nodes.length);
+ for(let i=1;i<nodes.length;i++)best[i]={from:0,d:d2(nodes[0],nodes[i])};
+ while(used.size<nodes.length){
+   let pick=-1,bd=Infinity;
+   for(let i=1;i<nodes.length;i++)
+     if(!used.has(i)&&best[i].d<bd){bd=best[i].d;pick=i}
+   if(pick<0)break;
+   used.add(pick);
+   edges.push({a:nodes[best[pick].from],b:nodes[pick]});
+   for(let i=1;i<nodes.length;i++){
+     if(!used.has(i)){
+       const d=d2(nodes[pick],nodes[i]);
+       if(d<best[i].d)best[i]={from:pick,d};
+     }
+   }
+ }
+}
+
+document.getElementById("build").onclick=()=>{
+ chooseStations();
+ buildRoute();
+ draw();
+};
+
+document.getElementById("applyHQ").onclick=()=>{
+ hq.x=+hqX.value;hq.y=+hqY.value;draw();
+};
+
+document.getElementById("reset").onclick=()=>{
+ selectedEffects.clear();chosenStations=[];edges=[];draw();
+};
+
+const effPanel=document.getElementById("effPanel");
+const effList=document.getElementById("effList");
+document.getElementById("openEff").onclick=()=>{
+ effList.innerHTML="";
+ for(const e of EFFECTS){
+   const d=document.createElement("div");
+   d.className="effect";
+   d.innerHTML=`<label><input type="checkbox"> ${e.name}</label>
+     <span class="dot" style="background:${e.c}"></span>`;
+   const chk=d.querySelector("input");
+   chk.checked=selectedEffects.has(e.id);
+   chk.onchange=()=>chk.checked?selectedEffects.add(e.id):selectedEffects.delete(e.id);
+   effList.appendChild(d);
+ }
+ effPanel.classList.add("open");
+};
+
+function centerSun(){
+ const p=iso(SUN.x,SUN.y);
+ cam.x=-p.sx*cam.s;cam.y=-p.sy*cam.s;
+}
+centerSun();draw();
+
+// pan/zoom
+let last=null;
+canvas.addEventListener("pointerdown",e=>{last={x:e.clientX,y:e.clientY}});
+canvas.addEventListener("pointermove",e=>{
+ if(!last)return;
+ cam.x+=e.clientX-last.x;
+ cam.y+=e.clientY-last.y;
+ last={x:e.clientX,y:e.clientY};
+ draw();
+});
+canvas.addEventListener("pointerup",()=>last=null);
+canvas.addEventListener("wheel",e=>{
+ cam.s*=e.deltaY>0?0.9:1.1;
+ cam.s=Math.max(0.4,Math.min(3,cam.s));
+ draw();
+});
 </script>
 </body>
 </html>
