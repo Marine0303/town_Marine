@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>WOS風 アイソメ・シミュレーション（単体HTML）</title>
+<title>WOS 固定マップ（実座標・アイソメ）</title>
 <style>
   html,body{margin:0;height:100%;background:#050b1a;color:#e9eefc;font-family:system-ui;overflow:hidden}
   header{
@@ -12,29 +12,15 @@
     padding:10px;background:rgba(10,16,40,.92);border-bottom:1px solid rgba(255,255,255,.12);
     backdrop-filter: blur(8px);
   }
-  button,select,input{
-    background:#0f1b44;color:#e9eefc;border:1px solid rgba(255,255,255,.18);
-    border-radius:10px;padding:8px 10px;font-size:14px
-  }
-  button{cursor:pointer}
-  #c{position:fixed;inset:52px 0 0 0;touch-action:none;}
+  button{background:#0f1b44;color:#e9eefc;border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;padding:8px 10px;font-size:14px;cursor:pointer}
   .pill{padding:6px 10px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:#0b1433}
+  #c{position:fixed;inset:52px 0 0 0;touch-action:none;}
 </style>
 </head>
 <body>
 <header>
-  <span class="pill">WOS風 アイソメ・マップ</span>
-  <select id="type">
-    <option value="hq">本部</option>
-    <option value="fort">砦</option>
-    <option value="fortress">要塞</option>
-    <option value="sun">太陽城</option>
-  </select>
-  <input id="label" placeholder="ラベル（例：N9Q HQ）" style="width:160px">
-  <input id="color" type="color" value="#2b7cff" title="同盟色">
-  <button id="add">追加</button>
-  <button id="save">保存(JSON)</button>
-  <button id="load">読込(JSON)</button>
+  <span class="pill">WOS 固定マップ（A）</span>
   <button id="reset">表示リセット</button>
 </header>
 
@@ -45,120 +31,123 @@
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
 
-  // ====== マップ設定 ======
-  const GRID_W = 120, GRID_H = 120;  // 論理マス
-  const TILE_W = 40;                // タイル幅（画面上）
-  const TILE_H = 20;                // タイル高（画面上）
-  const BASE = { x: 0, y: 0 };       // 画面中央へ後で合わせる
+  // ====== 表示設定 ======
+  const SCALE = 0.8;           // 見た目倍率（好みで調整）
+  const TILE_W = 40;           // タイル幅
+  const TILE_H = 20;           // タイル高
+  const BASE = {x:0,y:0};      // 画面中央に合わせる
 
   // カメラ（パン＆ズーム）
-  const cam = { x: 0, y: 0, s: 1 };
+  const cam = { x:0, y:0, s:1 };
 
-  // 施設データ（論理座標 gx, gy）
-  let data = {
-    buildings: [
-      {id:1, type:"sun", gx:60, gy:60, label:"SUN", color:"#ffb020"},
-      {id:2, type:"fortress", gx:60, gy:75, label:"要塞1", color:"#2b7cff"},
-      {id:3, type:"fort", gx:40, gy:80, label:"砦", color:"#19c37d"},
-    ]
-  };
-  let nextId = 10;
+  // ====== 実座標 固定施設（A 完成版） ======
+  const FIXED = [
+    // 太陽城
+    { type:"sun", x:597, y:597, label:"SUN" },
 
-  // ====== ユーティリティ：アイソメ変換 ======
-  function isoToScreen(gx, gy){
-    const x = (gx - gy) * (TILE_W/2);
-    const y = (gx + gy) * (TILE_H/2);
-    return { x, y };
+    // 要塞（4）
+    { type:"fortress", x:597, y:800, label:"要塞1" },
+    { type:"fortress", x:400, y:597, label:"要塞2" },
+    { type:"fortress", x:597, y:400, label:"要塞3" },
+    { type:"fortress", x:800, y:597, label:"要塞4" },
+
+    // 砦（12）
+    { type:"fort", x:237, y:828 },
+    { type:"fort", x:237, y:606 },
+    { type:"fort", x:237, y:348 },
+
+    { type:"fort", x:366, y:237 },
+    { type:"fort", x:588, y:137 },
+    { type:"fort", x:846, y:237 },
+
+    { type:"fort", x:957, y:348 },
+    { type:"fort", x:957, y:606 },
+    { type:"fort", x:957, y:828 },
+
+    { type:"fort", x:846, y:957 },
+    { type:"fort", x:606, y:957 },
+    { type:"fort", x:306, y:957 },
+  ];
+
+  // ====== 実座標 → 画面（アイソメ変換） ======
+  function iso(x,y){
+    return {
+      sx:(x-y)*SCALE,
+      sy:(x+y)*SCALE*0.5
+    };
   }
-  function screenToIso(px, py){
-    // cam反映を戻してから逆変換
-    const x = (px - BASE.x - cam.x) / cam.s;
-    const y = (py - BASE.y - cam.y) / cam.s;
-    const gx = (y / (TILE_H/2) + x / (TILE_W/2)) / 2;
-    const gy = (y / (TILE_H/2) - x / (TILE_W/2)) / 2;
-    return { gx, gy };
-  }
-  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
-  // ====== 描画：地面タイル（雪っぽいグラデ） ======
-  function drawTile(sx, sy){
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(sx + TILE_W/2, sy + TILE_H/2);
-    ctx.lineTo(sx, sy + TILE_H);
-    ctx.lineTo(sx - TILE_W/2, sy + TILE_H/2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-
+  // ====== 描画 ======
   function draw(){
     resizeIfNeeded();
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // BASE を画面中央へ
     BASE.x = canvas.width/2;
     BASE.y = canvas.height/2;
 
-    // カメラ適用
     ctx.save();
     ctx.translate(BASE.x + cam.x, BASE.y + cam.y);
     ctx.scale(cam.s, cam.s);
 
-    // 背景（マップっぽい暗さ）
-    ctx.fillStyle = "#070f28";
+    // 背景
+    ctx.fillStyle="#070f28";
     ctx.fillRect(-99999,-99999,199998,199998);
 
-    // 地面タイル
-    ctx.strokeStyle = "rgba(255,255,255,.06)";
-    for(let gy=0; gy<GRID_H; gy++){
-      for(let gx=0; gx<GRID_W; gx++){
-        const p = isoToScreen(gx, gy);
-        // 雪っぽい色ムラ（それっぽさ）
-        const n = ((gx*37 + gy*19) % 100) / 100;
-        const a = 0.10 + n*0.10;
-        ctx.fillStyle = `rgba(180,220,255,${a})`;
-        drawTile(p.x, p.y);
+    // 地面（雪っぽいタイル）
+    ctx.strokeStyle="rgba(255,255,255,.06)";
+    for(let y=0;y<=1200;y+=20){
+      for(let x=0;x<=1200;x+=20){
+        const p=iso(x,y);
+        const a=0.08+(((x*37+y*19)%100)/100)*0.12;
+        ctx.fillStyle=`rgba(180,220,255,${a})`;
+        tile(p.sx,p.sy);
       }
     }
 
-    // 施設（奥→手前にソートすると「実際っぽい」）
-    const list = [...data.buildings].sort((a,b)=> (a.gx+a.gy)-(b.gx+b.gy));
+    // 施設は奥→手前にソート
+    const list=[...FIXED].sort((a,b)=>(a.x+a.y)-(b.x+b.y));
     for(const b of list){
-      const p = isoToScreen(b.gx, b.gy);
+      const p=iso(b.x,b.y);
 
       // 影
-      ctx.fillStyle = "rgba(0,0,0,.35)";
+      ctx.fillStyle="rgba(0,0,0,.35)";
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y + TILE_H*0.75, TILE_W*0.35, TILE_H*0.35, 0, 0, Math.PI*2);
+      ctx.ellipse(p.sx,p.sy+TILE_H*0.8,TILE_W*0.35,TILE_H*0.35,0,0,Math.PI*2);
       ctx.fill();
 
-      // 本体（簡易スプライト：丸角ボックス）
-      const w = TILE_W*0.9, h = TILE_H*1.4;
-      const x = p.x - w/2, y = p.y - h;
+      // 本体
+      const w=TILE_W*0.9, h=TILE_H*1.4;
+      const x=p.sx-w/2, y=p.sy-h;
       roundRect(x,y,w,h,10);
 
-      // type別の色味
-      let fill = b.color || "#2b7cff";
-      if(b.type==="sun") fill = "#ff8a1a";
-      if(b.type==="fort") fill = "#19c37d";
-      if(b.type==="fortress") fill = "#2b7cff";
-      if(b.type==="hq") fill = b.color || "#7c3aed";
+      let fill="#2b7cff";
+      if(b.type==="sun") fill="#ff8a1a";
+      if(b.type==="fort") fill="#19c37d";
+      if(b.type==="fortress") fill="#2b7cff";
 
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,.28)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.fillStyle=fill; ctx.fill();
+      ctx.strokeStyle="rgba(255,255,255,.28)";
+      ctx.lineWidth=2; ctx.stroke();
 
-      // ラベル
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 12px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText(b.label || b.type, p.x, y + h/2 + 4);
+      if(b.label){
+        ctx.fillStyle="#fff";
+        ctx.font="bold 12px system-ui";
+        ctx.textAlign="center";
+        ctx.fillText(b.label,p.sx,y+h/2+4);
+      }
     }
 
     ctx.restore();
+  }
+
+  function tile(sx,sy){
+    ctx.beginPath();
+    ctx.moveTo(sx,sy);
+    ctx.lineTo(sx+TILE_W/2,sy+TILE_H/2);
+    ctx.lineTo(sx,sy+TILE_H);
+    ctx.lineTo(sx-TILE_W/2,sy+TILE_H/2);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
   }
 
   function roundRect(x,y,w,h,r){
@@ -171,115 +160,39 @@
     ctx.closePath();
   }
 
-  // ====== 施設ヒット判定（画面→施設） ======
-  function hitTest(px, py){
-    // 画面座標を「カメラ適用後」座標に戻して判定
-    const x = (px - BASE.x - cam.x) / cam.s;
-    const y = (py - BASE.y - cam.y) / cam.s;
-
-    // 手前優先にするため逆順
-    const list = [...data.buildings].sort((a,b)=> (b.gx+b.gy)-(a.gx+a.gy));
-    for(const b of list){
-      const p = isoToScreen(b.gx, b.gy);
-      const w = TILE_W*0.9, h = TILE_H*1.4;
-      const rx = p.x - w/2, ry = p.y - h;
-      if(x>=rx && x<=rx+w && y>=ry && y<=ry+h) return b;
-    }
-    return null;
-  }
-
-  // ====== 入力（ドラッグ移動／パン／ズーム） ======
-  let draggingObj = null;
-  let panning = false;
-  let last = null;
-
-  canvas.addEventListener('pointerdown', (e)=>{
+  // ====== 操作（パン／ズーム） ======
+  let panning=false,last=null;
+  canvas.addEventListener('pointerdown',e=>{
     canvas.setPointerCapture(e.pointerId);
-    const obj = hitTest(e.clientX, e.clientY);
-    last = {x:e.clientX, y:e.clientY};
-
-    if(obj){
-      draggingObj = obj;
-    }else{
-      panning = true;
-    }
+    panning=true; last={x:e.clientX,y:e.clientY};
   });
-
-  canvas.addEventListener('pointermove', (e)=>{
-    if(!last) return;
-    const dx = e.clientX - last.x;
-    const dy = e.clientY - last.y;
-    last = {x:e.clientX, y:e.clientY};
-
-    if(draggingObj){
-      const iso = screenToIso(e.clientX, e.clientY);
-      draggingObj.gx = clamp(Math.round(iso.gx), 0, GRID_W-1);
-      draggingObj.gy = clamp(Math.round(iso.gy), 0, GRID_H-1);
-      draw();
-    }else if(panning){
-      cam.x += dx;
-      cam.y += dy;
-      draw();
-    }
+  canvas.addEventListener('pointermove',e=>{
+    if(!panning||!last) return;
+    cam.x+=e.clientX-last.x;
+    cam.y+=e.clientY-last.y;
+    last={x:e.clientX,y:e.clientY};
+    draw();
   });
-
-  canvas.addEventListener('pointerup', ()=>{
-    draggingObj = null;
-    panning = false;
-    last = null;
-  });
-
-  // ホイールズーム（PC）
-  canvas.addEventListener('wheel', (e)=>{
+  canvas.addEventListener('pointerup',()=>{panning=false;last=null;});
+  canvas.addEventListener('wheel',e=>{
     e.preventDefault();
-    const factor = Math.exp(-e.deltaY * 0.001);
-    cam.s = clamp(cam.s * factor, 0.4, 2.5);
+    cam.s=Math.max(0.4,Math.min(2.5,cam.s*Math.exp(-e.deltaY*0.001)));
     draw();
-  }, {passive:false});
+  },{passive:false});
 
-  // ====== UI ======
-  document.getElementById('add').onclick = ()=>{
-    const type = document.getElementById('type').value;
-    const label = document.getElementById('label').value || type.toUpperCase();
-    const color = document.getElementById('color').value;
-
-    data.buildings.push({id:nextId++, type, gx:60, gy:60, label, color});
-    draw();
+  document.getElementById('reset').onclick=()=>{
+    cam.x=0;cam.y=0;cam.s=1; draw();
   };
 
-  document.getElementById('save').onclick = ()=>{
-    const json = JSON.stringify(data, null, 2);
-    prompt("このJSONをコピーして保存してね（メモ帳でもOK）", json);
-  };
-
-  document.getElementById('load').onclick = ()=>{
-    const txt = prompt("保存したJSONを貼り付けてね");
-    if(!txt) return;
-    try{
-      const obj = JSON.parse(txt);
-      if(obj && obj.buildings) data = obj;
-      draw();
-    }catch(err){
-      alert("JSONが壊れてるかも…");
-    }
-  };
-
-  document.getElementById('reset').onclick = ()=>{
-    cam.x = 0; cam.y = 0; cam.s = 1;
-    draw();
-  };
-
-  // ====== リサイズ ======
   function resizeIfNeeded(){
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if(canvas.width !== w*devicePixelRatio || canvas.height !== h*devicePixelRatio){
-      canvas.width = Math.floor(w*devicePixelRatio);
-      canvas.height = Math.floor(h*devicePixelRatio);
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    if(canvas.width!==w*devicePixelRatio||canvas.height!==h*devicePixelRatio){
+      canvas.width=Math.floor(w*devicePixelRatio);
+      canvas.height=Math.floor(h*devicePixelRatio);
       ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
     }
   }
-  window.addEventListener('resize', draw);
+  window.addEventListener('resize',draw);
 
   draw();
 })();
