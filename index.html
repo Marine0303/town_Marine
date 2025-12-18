@@ -1,129 +1,177 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>WOS シミュレーションマップ</title>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>ワクワクタウン</title>
 <style>
-:root{
-  --headerH: 72px;
-}
-html,body{
-  margin:0;
-  height:100dvh;
-  background:#050b1a;
-  color:#e9eefc;
-  font-family:system-ui;
-  overflow:hidden;
-}
-
-/* ===== Header ===== */
-header{
-  position:fixed;
-  left:0; right:0; top:0;
-  z-index:10;
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-  padding:10px;
-  padding-top:calc(10px + env(safe-area-inset-top));
-  background:rgba(10,16,40,.92);
-  border-bottom:1px solid rgba(255,255,255,.12);
-  backdrop-filter: blur(8px);
-}
-.pill{
-  padding:6px 12px;
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:999px;
-  background:#0b1433;
-}
-button,input{
-  background:#0f1b44;
-  color:#e9eefc;
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:10px;
-  padding:8px 10px;
-  font-size:14px;
-}
-button{cursor:pointer}
-.mini{font-size:12px;opacity:.85}
-
-/* ===== Canvas ===== */
-#c{
-  position:fixed;
-  left:0;
-  top:var(--headerH);
-  width:100vw;
-  height:calc(100dvh - var(--headerH)); /* ← 高さをCSSで保証 */
-  touch-action:none;
-}
+  :root{ --headerH: 116px; }
+  html,body{ margin:0; height:100dvh; overflow:hidden; background:#050b1a; color:#e9eefc; font-family:system-ui; }
+  header{
+    position:fixed; left:0; right:0; top:0; z-index:10;
+    padding:10px; padding-top:calc(10px + env(safe-area-inset-top));
+    background:rgba(10,16,40,.95); border-bottom:1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+  }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .pill{ padding:6px 10px; border:1px solid rgba(255,255,255,.18); border-radius:999px; background:#0b1433; }
+  input,button,select,textarea{
+    background:#0f1b44; color:#e9eefc; border:1px solid rgba(255,255,255,.18);
+    border-radius:10px; padding:8px 10px; font-size:13px;
+  }
+  button{ cursor:pointer; }
+  .mini{ font-size:12px; opacity:.85; }
+  #wrap{
+    position:fixed; left:0; right:0; bottom:0;
+    top:var(--headerH);
+    display:flex;
+  }
+  #c{
+    flex:1;
+    width:100vw;
+    height:calc(100dvh - var(--headerH)); /* iOSで高さ保証 */
+    touch-action:none;
+  }
+  #panel{
+    width:330px;
+    background:#070f28;
+    border-left:1px solid rgba(255,255,255,.12);
+    overflow:auto;
+    padding:10px;
+  }
+  details{
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;
+    padding:8px 10px;
+    margin-bottom:10px;
+    background:rgba(255,255,255,.03);
+  }
+  summary{ cursor:pointer; font-weight:700; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+  .list{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px;
+  }
+  label.chk{
+    display:flex; gap:8px; align-items:center;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:10px; padding:6px 8px;
+    background:rgba(0,0,0,.15);
+    user-select:none;
+  }
+  label.chk input{ transform:scale(1.1); }
+  .note{ font-size:12px; opacity:.8; line-height:1.4; }
+  .stationRow{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:center;
+    padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.10);
+  }
+  .stationRow small{ opacity:.8; }
+  .stationRow select{ width:100%; }
+  .btnbar{ display:flex; gap:8px; flex-wrap:wrap; }
+  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 </style>
 </head>
 
 <body>
-
 <header id="hdr">
-  <span class="pill">WOS シミュレーション</span>
-
-  <span class="mini">HQ</span>
-  <input id="hqLabel" value="N9Q HQ" style="width:110px">
-  <input id="hqColor" type="color" value="#2b7cff">
-
-  <span class="mini">旗距離</span>
-  <input id="maxDist" type="number" value="300" style="width:80px">
-
-  <button id="addHQ">HQ追加</button>
-  <button id="reset">表示リセット</button>
+  <div class="row">
+    <span class="pill">WOS 旗ルート（HQ→ステ）</span>
+    <span class="mini">同盟</span>
+    <select id="allianceSel"></select>
+    <button id="addAlliance">同盟追加</button>
+    <button id="delAlliance">同盟削除</button>
+    <span class="mini">色</span>
+    <input id="allianceColor" type="color" value="#2b7cff">
+    <span class="mini">HQ</span>
+    <input id="hqX" type="number" value="520" style="width:80px">
+    <input id="hqY" type="number" value="520" style="width:80px">
+    <button id="applyHQ">座標反映</button>
+    <button id="decide">決定（ルート計算）</button>
+    <button id="centerSun">太陽城へ</button>
+  </div>
+  <div class="row">
+    <span class="mini">表示</span>
+    <label class="chk" style="padding:6px 10px;"><input id="showAllStations" type="checkbox" checked>全ステ表示</label>
+    <label class="chk" style="padding:6px 10px;"><input id="showOnlyAssigned" type="checkbox">効果割当ステのみ</label>
+    <label class="chk" style="padding:6px 10px;"><input id="showRouteNodes" type="checkbox" checked>ルート点強調</label>
+    <label class="chk" style="padding:6px 10px;"><input id="showEdges" type="checkbox" checked>ルート線</label>
+    <span class="mini">ズーム(PCホイール)</span>
+    <button id="resetView">表示リセット</button>
+    <button id="saveJSON">保存(JSON)</button>
+    <button id="loadJSON">読込(JSON)</button>
+  </div>
 </header>
 
-<canvas id="c"></canvas>
+<div id="wrap">
+  <canvas id="c"></canvas>
+
+  <aside id="panel">
+    <details open>
+      <summary>1) 欲しい効果を選ぶ（重複不可）</summary>
+      <p class="note">
+        ここは「種類」を選ぶだけ（重複不可＝同じ種類は1回まで）。<br>
+        「その効果がどのステにあるか」は 2) で割り当てる。
+      </p>
+      <div class="list" id="effectChecks"></div>
+    </details>
+
+    <details open>
+      <summary>2) ステーションに効果を割り当てる（編集）</summary>
+      <p class="note">
+        74ステのうち、効果が分かっているものだけ選択して割り当ててOK。<br>
+        同じ効果を複数ステに割り当ててもOK（ルート計算時に「HQに一番近いステ」を採用）。
+      </p>
+
+      <div class="grid2">
+        <input id="stationFilter" placeholder="検索: 例 S12 / 520 / atk" />
+        <select id="filterEffect">
+          <option value="">効果で絞り込み（全て）</option>
+        </select>
+      </div>
+
+      <div class="btnbar" style="margin-top:8px;">
+        <button id="clearAssignments">割当を全消し</button>
+        <button id="autoPickNearest">決定後: 採用ステを一覧表示</button>
+      </div>
+
+      <div id="stationList" style="margin-top:10px;"></div>
+    </details>
+
+    <details>
+      <summary>3) 採用ステ・ルート結果</summary>
+      <div id="resultBox" class="note"></div>
+    </details>
+  </aside>
+</div>
 
 <script>
 (() => {
-  const canvas = document.getElementById("c");
-  const ctx = canvas.getContext("2d");
-  const hdr = document.getElementById("hdr");
+  // ========= 効果タイプ（全12種） =========
+  const EFFECTS = [
+    { id:"production", label:"生産" },
+    { id:"gathering", label:"採取" },
+    { id:"march", label:"行軍速度" },
+    { id:"atk5", label:"攻撃 +5%" },
+    { id:"atk8", label:"攻撃 +8%" },
+    { id:"def5", label:"防御 +5%" },
+    { id:"def8", label:"防御 +8%" },
+    { id:"training", label:"訓練" },
+    { id:"research5", label:"研究 +5%" },
+    { id:"research8", label:"研究 +8%" },
+    { id:"build5", label:"建築 +5%" },
+    { id:"build8", label:"建築 +8%" },
+  ];
+  const EFFECT_BY_ID = Object.fromEntries(EFFECTS.map(e=>[e.id,e]));
+  const EFFECT_OPTIONS_HTML = [
+    `<option value="">未設定</option>`,
+    ...EFFECTS.map(e=>`<option value="${e.id}">${e.label}</option>`)
+  ].join("");
 
-  /* ===== パラメータ ===== */
-  const SCALE = 0.8;
-  const TILE_W = 40;
-  const TILE_H = 20;
-  const WORLD_MIN = 0;
-  const WORLD_MAX = 1200;
-
-  /* ===== カメラ ===== */
-  const cam = { x:0, y:0, s:1 };
-  const BASE = { x:0, y:0 };
-
-  /* ===== 固定施設 ===== */
+  // ========= 固定点（太陽城：安心用表示） =========
   const SUN = { x:597, y:597 };
 
-  const FIXED = [
-    { type:"sun", x:597, y:597, label:"SUN" },
-
-    { type:"fortress", x:597, y:800, label:"要塞1" },
-    { type:"fortress", x:400, y:597, label:"要塞2" },
-    { type:"fortress", x:597, y:400, label:"要塞3" },
-    { type:"fortress", x:800, y:597, label:"要塞4" },
-
-    { type:"fort", x:237, y:828 },
-    { type:"fort", x:237, y:606 },
-    { type:"fort", x:237, y:348 },
-    { type:"fort", x:366, y:237 },
-    { type:"fort", x:588, y:137 },
-    { type:"fort", x:846, y:237 },
-    { type:"fort", x:957, y:348 },
-    { type:"fort", x:957, y:606 },
-    { type:"fort", x:957, y:828 },
-    { type:"fort", x:846, y:957 },
-    { type:"fort", x:606, y:957 },
-    { type:"fort", x:306, y:957 },
-  ];
-
-  /* ===== ステーション74 ===== */
-  const STATIONS = [
+  // ========= ステーション座標（74） =========
+  const STATIONS_RAW = [
     [138,327],[138,957],[237,138],[327,1038],[768,138],[957,1068],
     [1068,237],[1068,747],[87,666],[138,237],[267,1068],[537,87],
     [636,1137],[957,138],[1068,936],[1137,567],[138,138],[138,666],
@@ -135,135 +183,599 @@ button{cursor:pointer}
     [138,438],[138,867],[366,138],[438,1068],[666,138],[738,957],
     [957,438],[1068,666],[387,486],[588,867],[816,486],[387,717],
     [588,327],[816,717],[327,567],[486,867],[768,327],[867,666]
-  ].map(([x,y])=>({x,y}));
-
-  /* ===== HQ ===== */
-  let hqs = [
-    { id:1, x:520, y:520, label:"N9Q HQ", color:"#2b7cff" }
   ];
-  let nextHqId = 2;
 
-  /* ===== ユーティリティ ===== */
-  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-  const iso = (x,y)=>({ sx:(x-y)*SCALE, sy:(x+y)*SCALE*0.5 });
+  const STATIONS = STATIONS_RAW.map(([x,y],i)=>({
+    id:i+1,
+    x, y,
+    effect:"" // ← ここをUIで割当
+  }));
 
-  /* ===== Canvasサイズ ===== */
-  function updateHeaderHeight(){
-    document.documentElement.style.setProperty(
-      "--headerH",
-      `${Math.ceil(hdr.getBoundingClientRect().height)}px`
-    );
+  // ========= UI参照 =========
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const hdr = document.getElementById("hdr");
+
+  const allianceSel = document.getElementById("allianceSel");
+  const allianceColor = document.getElementById("allianceColor");
+  const hqX = document.getElementById("hqX");
+  const hqY = document.getElementById("hqY");
+
+  const showAllStations = document.getElementById("showAllStations");
+  const showOnlyAssigned = document.getElementById("showOnlyAssigned");
+  const showRouteNodes = document.getElementById("showRouteNodes");
+  const showEdges = document.getElementById("showEdges");
+
+  const effectChecks = document.getElementById("effectChecks");
+  const stationList = document.getElementById("stationList");
+  const stationFilter = document.getElementById("stationFilter");
+  const filterEffect = document.getElementById("filterEffect");
+  const resultBox = document.getElementById("resultBox");
+
+  // ========= マップ表示（iOS安全） =========
+  const SCALE = 0.8;
+  const TILE_W = 40;
+  const TILE_H = 20;
+  const cam = { x:0, y:0, s:1 };
+  const BASE = { x:0, y:0 };
+
+  function updateHeaderH(){
+    const h = Math.ceil(hdr.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--headerH", `${h}px`);
   }
-  function resize(){
-    updateHeaderHeight();
+  function resizeCanvas(){
+    updateHeaderH();
     const r = canvas.getBoundingClientRect();
     const w = Math.max(1, Math.floor(r.width * devicePixelRatio));
     const h = Math.max(1, Math.floor(r.height * devicePixelRatio));
-    canvas.width = w;
-    canvas.height = h;
-    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    if (canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+      ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    }
+    BASE.x = r.width/2;
+    BASE.y = r.height/2;
   }
 
-  /* ===== 描画 ===== */
-  function drawGround(){
+  function iso(x,y){
+    return { sx:(x-y)*SCALE, sy:(x+y)*SCALE*0.5 };
+  }
+  function dist(a,b){
+    const dx=a.x-b.x, dy=a.y-b.y;
+    return Math.sqrt(dx*dx+dy*dy);
+  }
+
+  // ========= 同盟（将来拡張しやすい構造） =========
+  let alliances = [
+    {
+      id: crypto.randomUUID?.() || String(Math.random()),
+      name:"N9Q",
+      color:"#2b7cff",
+      hq:{ x:520, y:520 },
+      wanted: new Set(),        // 効果種類（重複不可）
+      chosenStations: [],       // 決定後に採用されたステ
+      edges: []                 // 決定後のルート線
+    }
+  ];
+  let activeAllianceId = alliances[0].id;
+
+  function activeAlliance(){
+    return alliances.find(a=>a.id===activeAllianceId) || alliances[0];
+  }
+
+  function refreshAllianceSelect(){
+    allianceSel.innerHTML = alliances.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+    allianceSel.value = activeAllianceId;
+    const a = activeAlliance();
+    allianceColor.value = a.color;
+    hqX.value = a.hq.x;
+    hqY.value = a.hq.y;
+    // wanted checkboxes反映
+    for (const cb of effectChecks.querySelectorAll("input[type=checkbox]")){
+      cb.checked = a.wanted.has(cb.value);
+    }
+    draw();
+  }
+
+  // ========= 効果チェック（重複不可＝チェックボックスで自然に満たす） =========
+  function renderEffectChecks(){
+    effectChecks.innerHTML = "";
+    for(const e of EFFECTS){
+      const label = document.createElement("label");
+      label.className = "chk";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = e.id;
+      cb.addEventListener("change", ()=>{
+        const a = activeAlliance();
+        if(cb.checked) a.wanted.add(e.id);
+        else a.wanted.delete(e.id);
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(e.label));
+      effectChecks.appendChild(label);
+    }
+
+    // filterEffect options
+    filterEffect.innerHTML = `<option value="">効果で絞り込み（全て）</option>` +
+      EFFECTS.map(e=>`<option value="${e.id}">${e.label}</option>`).join("");
+  }
+
+  // ========= ステーション編集リスト =========
+  function matchesFilter(st){
+    const q = (stationFilter.value || "").trim().toLowerCase();
+    const eff = filterEffect.value;
+
+    if(eff && st.effect !== eff) return false;
+    if(!q) return true;
+
+    const s = `s${st.id} ${st.x} ${st.y} ${(st.effect||"")}`.toLowerCase();
+    return s.includes(q);
+  }
+
+  function renderStationList(){
+    stationList.innerHTML = "";
+    const frag = document.createDocumentFragment();
+
+    for(const st of STATIONS){
+      if(!matchesFilter(st)) continue;
+
+      const row = document.createElement("div");
+      row.className = "stationRow";
+
+      const left = document.createElement("div");
+      left.innerHTML = `<div><strong>S${st.id}</strong> <small class="mono">(${st.x},${st.y})</small></div>
+                        <small>${st.effect ? ("効果: " + EFFECT_BY_ID[st.effect].label) : "効果: 未設定"}</small>`;
+
+      const sel = document.createElement("select");
+      sel.innerHTML = EFFECT_OPTIONS_HTML;
+      sel.value = st.effect || "";
+      sel.addEventListener("change", ()=>{
+        st.effect = sel.value;
+        // 決定済み結果は古くなるのでクリア
+        const a = activeAlliance();
+        a.chosenStations = [];
+        a.edges = [];
+        renderStationList();
+        draw();
+      });
+
+      row.appendChild(left);
+      row.appendChild(sel);
+      frag.appendChild(row);
+    }
+    stationList.appendChild(frag);
+  }
+
+  stationFilter.addEventListener("input", renderStationList);
+  filterEffect.addEventListener("change", renderStationList);
+
+  document.getElementById("clearAssignments").addEventListener("click", ()=>{
+    for(const st of STATIONS) st.effect = "";
+    const a = activeAlliance();
+    a.chosenStations = [];
+    a.edges = [];
+    stationFilter.value = "";
+    filterEffect.value = "";
+    renderStationList();
+    draw();
+  });
+
+  // ========= ルート計算（決定ボタン） =========
+  function chooseStationsForAlliance(a){
+    // wanted効果ごとに「HQから最も近いステ」を採用
+    const chosen = [];
+    const missing = [];
+
+    for(const eff of a.wanted){
+      const candidates = STATIONS.filter(s=>s.effect === eff);
+      if(candidates.length === 0){
+        missing.push(eff);
+        continue;
+      }
+      let best = candidates[0];
+      let bestD = dist(a.hq, best);
+      for(const s of candidates.slice(1)){
+        const d = dist(a.hq, s);
+        if(d < bestD){ best = s; bestD = d; }
+      }
+      chosen.push(best);
+    }
+
+    // ここで「重複採用（同じステが複数効果に使われる）」は起きない（1ステ＝1効果しか割り当てられない設計）
+    // ただし user が未設定効果を求めた場合は missing になる
+
+    return { chosen, missing };
+  }
+
+  function computeRouteTree(a, nodes){
+    // nodes: 採用ステ（配列）
+    // HQを起点に Prim風：connectedから最短の未接続をつなぐ
+    const connected = [{ kind:"hq", x:a.hq.x, y:a.hq.y, label:"HQ" }];
+    const remaining = nodes.map(s=>({ kind:"st", id:s.id, x:s.x, y:s.y, effect:s.effect, label:`S${s.id}` }));
+
+    const edges = [];
+    while(remaining.length){
+      let bestI = -1;
+      let bestFrom = null;
+      let bestTo = null;
+      let bestD = Infinity;
+
+      for(const from of connected){
+        for(let i=0;i<remaining.length;i++){
+          const to = remaining[i];
+          const d = dist(from, to);
+          if(d < bestD){
+            bestD = d;
+            bestI = i;
+            bestFrom = from;
+            bestTo = to;
+          }
+        }
+      }
+      edges.push({ from: bestFrom, to: bestTo, d: bestD });
+      connected.push(bestTo);
+      remaining.splice(bestI,1);
+    }
+    return edges;
+  }
+
+  document.getElementById("decide").addEventListener("click", ()=>{
+    const a = activeAlliance();
+
+    // HQ反映（入力値）
+    a.hq.x = Number(hqX.value);
+    a.hq.y = Number(hqY.value);
+    a.color = allianceColor.value;
+
+    const { chosen, missing } = chooseStationsForAlliance(a);
+    a.chosenStations = chosen;
+    a.edges = computeRouteTree(a, chosen);
+
+    // 結果表示
+    const lines = [];
+    lines.push(`<div><strong>採用ステ</strong></div>`);
+    if(chosen.length === 0){
+      lines.push(`<div>（採用ステなし）</div>`);
+    }else{
+      for(const s of chosen){
+        lines.push(`<div>・${EFFECT_BY_ID[s.effect].label} → <span class="mono">S${s.id} (${s.x},${s.y})</span></div>`);
+      }
+    }
+    if(missing.length){
+      lines.push(`<div style="margin-top:8px;"><strong>未割当（見つからない効果）</strong></div>`);
+      for(const eff of missing){
+        lines.push(`<div>・${EFFECT_BY_ID[eff].label}（ステに効果が割り当てられていない）</div>`);
+      }
+    }
+    lines.push(`<div style="margin-top:8px;"><strong>ルート（だいたい）</strong></div>`);
+    for(const e of a.edges){
+      const f = e.from.kind==="hq" ? "HQ" : `${e.from.label}`;
+      const t = e.to.label;
+      lines.push(`<div>・${f} → ${t} <span class="mono">(d≈${e.d.toFixed(1)})</span></div>`);
+    }
+    resultBox.innerHTML = lines.join("");
+
+    draw();
+  });
+
+  document.getElementById("autoPickNearest").addEventListener("click", ()=>{
+    // 3) の結果を開いて見やすくするだけ
+    document.querySelectorAll("details")[2].open = true;
+  });
+
+  // ========= 同盟追加/削除/切替 =========
+  document.getElementById("addAlliance").addEventListener("click", ()=>{
+    const name = prompt("同盟名を入力", `ALLY${alliances.length+1}`) || `ALLY${alliances.length+1}`;
+    const a = {
+      id: crypto.randomUUID?.() || String(Math.random()),
+      name,
+      color:"#2b7cff",
+      hq:{ x:SUN.x, y:SUN.y },
+      wanted:new Set(),
+      chosenStations:[],
+      edges:[]
+    };
+    alliances.push(a);
+    activeAllianceId = a.id;
+    refreshAllianceSelect();
+  });
+
+  document.getElementById("delAlliance").addEventListener("click", ()=>{
+    if(alliances.length<=1){ alert("同盟は最低1つ必要"); return; }
+    const a = activeAlliance();
+    const ok = confirm(`同盟「${a.name}」を削除する？`);
+    if(!ok) return;
+    alliances = alliances.filter(x=>x.id!==a.id);
+    activeAllianceId = alliances[0].id;
+    refreshAllianceSelect();
+  });
+
+  allianceSel.addEventListener("change", ()=>{
+    activeAllianceId = allianceSel.value;
+    refreshAllianceSelect();
+  });
+
+  allianceColor.addEventListener("input", ()=>{
+    activeAlliance().color = allianceColor.value;
+    draw();
+  });
+
+  document.getElementById("applyHQ").addEventListener("click", ()=>{
+    const a = activeAlliance();
+    a.hq.x = Number(hqX.value);
+    a.hq.y = Number(hqY.value);
+    a.chosenStations = [];
+    a.edges = [];
+    draw();
+  });
+
+  // ========= 保存/読込（JSON） =========
+  function exportState(){
+    // wanted(Set)は配列へ
+    return {
+      version:1,
+      stations: STATIONS.map(s=>({ id:s.id, effect:s.effect })),
+      alliances: alliances.map(a=>({
+        id:a.id, name:a.name, color:a.color, hq:a.hq,
+        wanted:[...a.wanted]
+      })),
+      activeAllianceId
+    };
+  }
+  function importState(obj){
+    if(!obj || obj.version!==1) throw new Error("bad version");
+    if(Array.isArray(obj.stations)){
+      const map = new Map(obj.stations.map(s=>[s.id, s.effect||""]));
+      for(const st of STATIONS){
+        st.effect = map.get(st.id) || "";
+      }
+    }
+    if(Array.isArray(obj.alliances)){
+      alliances = obj.alliances.map(a=>({
+        id:a.id || (crypto.randomUUID?.() || String(Math.random())),
+        name:a.name || "ALLY",
+        color:a.color || "#2b7cff",
+        hq:{ x:Number(a.hq?.x)||SUN.x, y:Number(a.hq?.y)||SUN.y },
+        wanted:new Set(Array.isArray(a.wanted)?a.wanted:[]),
+        chosenStations:[],
+        edges:[]
+      }));
+      if(!alliances.length){
+        alliances = [{
+          id: crypto.randomUUID?.() || String(Math.random()),
+          name:"N9Q",
+          color:"#2b7cff",
+          hq:{x:520,y:520},
+          wanted:new Set(),
+          chosenStations:[],
+          edges:[]
+        }];
+      }
+    }
+    activeAllianceId = obj.activeAllianceId && alliances.some(a=>a.id===obj.activeAllianceId)
+      ? obj.activeAllianceId
+      : alliances[0].id;
+
+    renderStationList();
+    refreshAllianceSelect();
+    resultBox.innerHTML = "";
+  }
+
+  document.getElementById("saveJSON").addEventListener("click", ()=>{
+    const json = JSON.stringify(exportState(), null, 2);
+    prompt("このJSONをコピーして保存してね", json);
+  });
+
+  document.getElementById("loadJSON").addEventListener("click", ()=>{
+    const txt = prompt("保存したJSONを貼り付けてね");
+    if(!txt) return;
+    try{
+      const obj = JSON.parse(txt);
+      importState(obj);
+      draw();
+    }catch(e){
+      alert("JSONが壊れてるかも…");
+    }
+  });
+
+  // ========= 描画 =========
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawTile(sx,sy){
+    ctx.beginPath();
+    ctx.moveTo(sx,sy);
+    ctx.lineTo(sx + TILE_W/2, sy + TILE_H/2);
+    ctx.lineTo(sx, sy + TILE_H);
+    ctx.lineTo(sx - TILE_W/2, sy + TILE_H/2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function draw(){
+    resizeCanvas();
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.save();
+    ctx.translate(BASE.x + cam.x, BASE.y + cam.y);
+    ctx.scale(cam.s, cam.s);
+
+    // 背景 & 地面
     ctx.fillStyle="#070f28";
     ctx.fillRect(-99999,-99999,199998,199998);
+
     ctx.strokeStyle="rgba(255,255,255,.06)";
     for(let y=0;y<=1200;y+=20){
       for(let x=0;x<=1200;x+=20){
         const p=iso(x,y);
-        ctx.fillStyle="rgba(180,220,255,.12)";
-        ctx.beginPath();
-        ctx.moveTo(p.sx,p.sy);
-        ctx.lineTo(p.sx+TILE_W/2,p.sy+TILE_H/2);
-        ctx.lineTo(p.sx,p.sy+TILE_H);
-        ctx.lineTo(p.sx-TILE_W/2,p.sy+TILE_H/2);
-        ctx.closePath();
-        ctx.fill();ctx.stroke();
+        const n=((x*37+y*19)%100)/100;
+        ctx.fillStyle=`rgba(180,220,255,${0.07 + n*0.10})`;
+        drawTile(p.sx,p.sy);
       }
     }
-  }
 
-  function draw(){
-    resize();
-    const r = canvas.getBoundingClientRect();
-    BASE.x = r.width/2;
-    BASE.y = r.height/2;
+    // 太陽城（安心）
+    const ps = iso(SUN.x,SUN.y);
+    ctx.fillStyle="#ff8a1a";
+    roundRect(ps.sx-18, ps.sy-36, 36, 36, 10);
+    ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.35)";
+    ctx.lineWidth=2;
+    ctx.stroke();
+    ctx.fillStyle="#fff";
+    ctx.font="bold 13px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText("SUN", ps.sx, ps.sy-42);
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.translate(BASE.x+cam.x, BASE.y+cam.y);
-    ctx.scale(cam.s, cam.s);
+    // ステーション表示
+    const onlyAssigned = showOnlyAssigned.checked;
+    const showAll = showAllStations.checked;
+    const stationsToDraw = STATIONS.filter(s=>{
+      if(onlyAssigned) return !!s.effect;
+      if(showAll) return true;
+      return false;
+    });
 
-    drawGround();
-
-    // ステ
-    STATIONS.forEach(s=>{
+    for(const s of stationsToDraw){
       const p=iso(s.x,s.y);
-      ctx.fillStyle="rgba(255,255,255,.18)";
-      ctx.beginPath();
-      ctx.arc(p.sx,p.sy,4,0,Math.PI*2);
-      ctx.fill();
-    });
+      const assigned = !!s.effect;
 
-    // 固定施設
-    FIXED.sort((a,b)=>(a.x+a.y)-(b.x+b.y)).forEach(b=>{
-      const p=iso(b.x,b.y);
-      ctx.fillStyle=b.type==="sun"?"#ff8a1a":b.type==="fort"?"#19c37d":"#2b7cff";
-      ctx.fillRect(p.sx-8,p.sy-16,16,16);
-      if(b.label){
-        ctx.fillStyle="#fff";
-        ctx.font="12px system-ui";
-        ctx.textAlign="center";
-        ctx.fillText(b.label,p.sx,p.sy-18);
+      // 点
+      ctx.fillStyle = assigned ? "rgba(0,255,180,.35)" : "rgba(255,255,255,.14)";
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, assigned?5:4, 0, Math.PI*2);
+      ctx.fill();
+
+      // ラベル（割当ありだけ薄く）
+      if(assigned){
+        ctx.fillStyle="rgba(255,255,255,.85)";
+        ctx.font="11px system-ui";
+        ctx.textAlign="left";
+        ctx.fillText(`S${s.id}`, p.sx+7, p.sy-6);
       }
-    });
+    }
+
+    // ルート描画（アクティブ同盟）
+    const a = activeAlliance();
+
+    // ルート線
+    if(showEdges.checked && a.edges && a.edges.length){
+      ctx.strokeStyle = a.color;
+      ctx.lineWidth = 3;
+      for(const e of a.edges){
+        const p1 = iso(e.from.x, e.from.y);
+        const p2 = iso(e.to.x, e.to.y);
+        ctx.beginPath();
+        ctx.moveTo(p1.sx, p1.sy);
+        ctx.lineTo(p2.sx, p2.sy);
+        ctx.stroke();
+      }
+    }
+
+    // ルート点強調（採用ステ）
+    if(showRouteNodes.checked && a.chosenStations && a.chosenStations.length){
+      for(const s of a.chosenStations){
+        const p=iso(s.x,s.y);
+        ctx.fillStyle = a.color;
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, 7, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle="#fff";
+        ctx.lineWidth=2;
+        ctx.stroke();
+
+        ctx.fillStyle="#fff";
+        ctx.font="bold 12px system-ui";
+        ctx.textAlign="center";
+        ctx.fillText(`S${s.id}`, p.sx, p.sy-10);
+      }
+    }
 
     // HQ
-    hqs.forEach(h=>{
-      const p=iso(h.x,h.y);
-      ctx.fillStyle=h.color;
-      ctx.fillRect(p.sx-10,p.sy-20,20,20);
-      ctx.fillStyle="#fff";
-      ctx.fillText(h.label,p.sx,p.sy-24);
-    });
+    const ph = iso(a.hq.x, a.hq.y);
+    ctx.fillStyle = a.color;
+    roundRect(ph.sx-20, ph.sy-40, 40, 40, 12);
+    ctx.fill();
+    ctx.strokeStyle="#fff";
+    ctx.lineWidth=3;
+    ctx.stroke();
+    ctx.fillStyle="#fff";
+    ctx.font="bold 13px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText("HQ", ph.sx, ph.sy-46);
 
     ctx.restore();
   }
 
-  /* ===== 初期位置：太陽城を中央に ===== */
+  // ========= 視点（太陽城を最初に中央） =========
   function centerOnSun(){
-    const p = iso(SUN.x, SUN.y);
+    const p=iso(SUN.x,SUN.y);
     cam.x = -p.sx;
     cam.y = -p.sy;
     cam.s = 1;
+    draw();
   }
+  document.getElementById("centerSun").addEventListener("click", centerOnSun);
+  document.getElementById("resetView").addEventListener("click", ()=>{
+    cam.x=0; cam.y=0; cam.s=1; draw();
+  });
 
-  /* ===== UI ===== */
-  document.getElementById("addHQ").onclick=()=>{
-    hqs.push({
-      id:nextHqId++,
-      x:SUN.x+40,
-      y:SUN.y+40,
-      label:document.getElementById("hqLabel").value,
-      color:document.getElementById("hqColor").value
+  // ========= パン操作（背景ドラッグ） =========
+  let panning=false, last=null;
+  canvas.addEventListener("pointerdown", (e)=>{
+    canvas.setPointerCapture(e.pointerId);
+    panning=true;
+    last={x:e.clientX,y:e.clientY};
+  });
+  canvas.addEventListener("pointermove", (e)=>{
+    if(!panning || !last) return;
+    const dx=e.clientX-last.x, dy=e.clientY-last.y;
+    last={x:e.clientX,y:e.clientY};
+    cam.x += dx;
+    cam.y += dy;
+    draw();
+  });
+  canvas.addEventListener("pointerup", ()=>{ panning=false; last=null; });
+
+  // PCズーム
+  canvas.addEventListener("wheel",(e)=>{
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY*0.001);
+    cam.s = Math.max(0.4, Math.min(2.5, cam.s*factor));
+    draw();
+  }, {passive:false});
+
+  // ========= 表示トグル =========
+  for(const el of [showAllStations, showOnlyAssigned, showRouteNodes, showEdges]){
+    el.addEventListener("change", ()=>{
+      // showOnlyAssignedをONにしたら showAllStationsは意味が薄いのでそのままでもOK
+      draw();
     });
-    draw();
-  };
-  document.getElementById("reset").onclick=()=>{
-    centerOnSun();
-    draw();
-  };
-
-  /* ===== 起動（iOS安定） ===== */
-  function boot(){
-    centerOnSun();           // ← ここで必ず太陽城を見る
-    setTimeout(draw, 300);   // ← iOS Safari 対策
   }
-  window.addEventListener("resize", ()=>setTimeout(draw,200));
+
+  // ========= 初期化 =========
+  renderEffectChecks();
+  renderStationList();
+
+  // 初回：太陽城中央＆iOS待ち
+  function boot(){
+    centerOnSun();
+    setTimeout(()=>{ // iOS Safari layout確定待ち
+      refreshAllianceSelect();
+      draw();
+    }, 320);
+  }
+  window.addEventListener("resize", ()=>setTimeout(draw, 120));
   boot();
 })();
 </script>
-
 </body>
 </html>
