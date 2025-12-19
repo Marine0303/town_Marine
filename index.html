@@ -205,6 +205,57 @@
   window.addEventListener("resize", draw);
   centerOn(SUN.x,SUN.y);
   draw();
+  // ===== ここから追加（目印用） =====
+console.log("CHECKLIST ADD START");
+
+function renderChecklist(){
+  const sheetBody = document.getElementById("sheetBody");
+  if(!sheetBody){
+    alert("sheetBody が見つからない");
+    return;
+  }
+
+  sheetBody.innerHTML = "";
+
+  for(const item of EFFECT_LEVELS){
+    const row = document.createElement("div");
+
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.onchange = ()=>{
+      if(chk.checked) selectedKeys.add(item.key);
+      else selectedKeys.delete(item.key);
+    };
+
+    const label = document.createElement("span");
+    label.textContent = " " + item.label;
+
+    row.appendChild(chk);
+    row.appendChild(label);
+    sheetBody.appendChild(row);
+  }
+}
+
+// メニューボタン
+document.getElementById("menuBtn").onclick = ()=>{
+  const back = document.getElementById("sheetBack");
+  const sheet = document.getElementById("sheet");
+  if(!back || !sheet){
+    alert("sheet が見つからない");
+    return;
+  }
+  back.style.display = "block";
+  sheet.style.display = "block";
+  renderChecklist();
+};
+
+document.getElementById("sheetBack").onclick = ()=>{
+  document.getElementById("sheetBack").style.display = "none";
+  document.getElementById("sheet").style.display = "none";
+};
+
+console.log("CHECKLIST ADD END");
+// ===== ここまで追加 =====
 })();
 </script>
 
