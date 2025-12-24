@@ -969,14 +969,7 @@
       const isAlt = altSet.has(s.sid);
       const isChosen = chosenSet.has(s.sid);
 
-      if(isAlt){
-        ctx.save();
-        ctx.shadowColor = "#facc15";
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = "#facc15";
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, 14, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-      }
+    
 
       ctx.fillStyle = eff.color;
       ctx.beginPath(); ctx.arc(p.sx, p.sy, 8, 0, Math.PI*2); ctx.fill();
@@ -984,8 +977,7 @@
       ctx.strokeStyle = isAlt ? "#facc15" : "rgba(255,255,255,.8)";
       ctx.lineWidth = isAlt ? 3 : 2;
       ctx.stroke();
-
-      if(!isChosen){
+      
         ctx.font = "700 12px system-ui";
         ctx.textAlign = "center";
         ctx.strokeStyle = "#1a202c";
