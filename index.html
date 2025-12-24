@@ -1,0 +1,1585 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="ガチ勢Map"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0f172a"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<title>ガチ勢Map</title>
+<style>
+  :root{
+    --pad:12px;
+    --safeTop: env(safe-area-inset-top);
+    --safeBot: env(safe-area-inset-bottom);
+    --hdrH: 56px;
+  }
+  html,body{
+    margin:0; height:100dvh; background:#050b1a; color:#e9eefc;
+    font-family: system-ui,-apple-system,"Noto Sans JP",sans-serif;
+    overflow:hidden;
+  }
+  header{
+    position:fixed; left:0; right:0; top:0; z-index:50;
+    height: calc(var(--hdrH) + var(--safeTop));
+    padding-top: var(--safeTop);
+    background: rgba(8,14,34,.92);
+    border-bottom:1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(10px);
+    display:flex; align-items:center; gap:10px;
+    padding-left: var(--pad);
+    padding-right: var(--pad);
+    box-sizing: border-box;
+  }
+  .btn{
+    background:#0f1b44; color:#e9eefc;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:14px;
+    padding:10px 12px;
+    font-size:14px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .btn.primary{
+    background: linear-gradient(180deg, rgba(50,120,255,.95), rgba(40,90,230,.95));
+    font-weight:900;
+  }
+  .title{
+    font-weight:900; letter-spacing:.2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    opacity:.95;
+  }
+  .sp{flex:1}
+  .pill{
+    padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.05);
+    font-size:12px; opacity:.9;
+  }
+
+  #c{
+    position:fixed;
+    left:0; right:0;
+    top: calc(var(--hdrH) + var(--safeTop));
+    width:100%;
+    height: calc(100dvh - var(--hdrH) - var(--safeTop) - 44px - var(--safeBot));
+    touch-action:none;
+    background:#050b1a;
+  }
+
+  #buffsPanel{
+    position:fixed;
+    top: calc(var(--hdrH) + var(--safeTop) + 10px);
+    right:10px;
+    background: rgba(30,35,50,.92);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:10px;
+    z-index:30;
+    backdrop-filter: blur(6px);
+    pointer-events:none;
+  }
+  .panelTitle{
+    font-weight:900;
+    font-size:11px;
+    margin-bottom:6px;
+    color:#fff;
+  }
+  .keyDot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    display:inline-block;
+    flex-shrink:0;
+  }
+  .buffsTable{
+    border-collapse:collapse;
+    font-size:9px;
+    color:rgba(255,255,255,.85);
+  }
+  .buffsTable th, .buffsTable td{
+    padding:2px 4px;
+    text-align:center;
+  }
+  .buffsTable th{
+    font-weight:700;
+    color:#fff;
+  }
+  .buffsTable td:first-child{
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  @media (max-width: 600px){
+    #buffsPanel{ 
+      top: auto;
+      bottom: 70px;
+      right: 5px;
+      font-size: 8px;
+      padding: 5px 6px;
+      max-width: 140px;
+    }
+    #buffsPanel .panelTitle{
+      font-size: 9px;
+      margin-bottom: 3px;
+    }
+    #buffsPanel .buffsTable{
+      font-size: 7px;
+    }
+    #buffsPanel .buffsTable th, #buffsPanel .buffsTable td{
+      padding: 1px 2px;
+    }
+    #buffsPanel .keyDot{
+      width: 6px;
+      height: 6px;
+    }
+  }
+
+  .hud{
+    position:fixed; left:0; right:0;
+    bottom:0;
+    padding:10px var(--pad) calc(10px + var(--safeBot));
+    box-sizing:border-box;
+    background: rgba(8,14,34,.86);
+    border-top:1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(10px);
+    display:flex; gap:10px; align-items:center;
+    z-index:40;
+  }
+  .hud .box{
+    flex:1;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    border-radius:14px;
+    padding:10px;
+    font-size:12px;
+    line-height:1.2;
+  }
+  .hud .big{font-size:13px; font-weight:900}
+  .hud .muted{opacity:.75}
+
+  #sheetBack{
+    position:fixed; inset:0;
+    background: rgba(0,0,0,.45);
+    z-index:80;
+    display:none;
+  }
+  #sheet{
+    position:fixed; left:0; right:0; bottom:0;
+    z-index:90;
+    transform: translateY(110%);
+    transition: transform .22s ease;
+    background: rgba(10,16,40,.98);
+    border-top:1px solid rgba(255,255,255,.12);
+    border-radius: 18px 18px 0 0;
+    padding: 12px var(--pad) calc(12px + var(--safeBot));
+    box-sizing:border-box;
+    max-height: 74vh;
+    overflow:hidden;
+    backdrop-filter: blur(10px);
+  }
+  #sheet.open{ transform: translateY(0); }
+  #sheetBack.open{ display:block; }
+
+  .sheetTop{
+    display:flex; align-items:center; gap:10px;
+    padding-bottom:10px;
+  }
+  .drag{
+    width:44px; height:5px; border-radius:999px;
+    background: rgba(255,255,255,.22);
+    margin: 2px auto 8px auto;
+  }
+  .sheetTitle{ font-weight:900; }
+  .sheetBody{
+    overflow:auto;
+    max-height: calc(74vh - 90px);
+    padding-right:6px;
+  }
+  .card{
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    border-radius:16px;
+    padding:12px;
+    margin-bottom:10px;
+  }
+  .row{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    margin-top:10px;
+  }
+  label.mini{ font-size:12px; opacity:.8; }
+  input, select{
+    background:#0f1b44; color:#e9eefc;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:12px;
+    padding:10px 12px;
+    font-size:14px;
+    outline:none;
+  }
+  input[type="number"]{ width:88px; }
+  input[type="text"]{ width:120px; }
+  input[type="color"]{ width:54px; height:42px; padding:0 6px; }
+
+  .grid2{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+  }
+  .check{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04);
+    border-radius:14px;
+    padding:10px;
+  }
+  .check .left{
+    display:flex; align-items:center; gap:10px; min-width:0;
+  }
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    flex:0 0 auto;
+  }
+  .check .name{
+    font-weight:900;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width: 46vw;
+  }
+  .check .sub{ font-size:12px; opacity:.75; white-space:nowrap; }
+  .check input{ transform: scale(1.2); }
+
+  /* Station detail */
+  #detailBack{
+    position:fixed; inset:0;
+    background: rgba(0,0,0,.45);
+    z-index:95;
+    display:none;
+  }
+  #detail{
+    position:fixed; left:10px; right:10px;
+    top: calc(var(--hdrH) + var(--safeTop) + 10px);
+    z-index:100;
+    background: rgba(10,16,40,.98);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:12px;
+    display:none;
+    backdrop-filter: blur(10px);
+  }
+  #detail .top{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:10px;
+  }
+  #detail .top .t{font-weight:900}
+  #detail .top .x{opacity:.8}
+
+  #toast{
+    position:fixed; left:50%; bottom: calc(68px + var(--safeBot));
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.72);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:999px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .18s ease;
+    z-index:120;
+  }
+  #toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <button id="menuBtn" class="btn">☰</button>
+  <div class="title">ガチ勢Map</div>
+  <div class="sp"></div>
+  <span id="selPill" class="pill">選択 0</span>
+</header>
+
+<canvas id="c"></canvas>
+
+<!-- ステ強化一覧パネル (右上) -->
+<div id="buffsPanel">
+  <div class="panelTitle">ステ強化一覧</div>
+  <table class="buffsTable">
+    <tr><th></th><th>Lv1</th><th>Lv2</th><th>Lv3</th><th>Lv4</th></tr>
+    <tr><td><span class="keyDot" style="background:#3b82f6"></span>建築速度</td><td>+5%</td><td>-</td><td>+8%</td><td>-</td></tr>
+    <tr><td><span class="keyDot" style="background:#06b6d4"></span>採集速度</td><td>+5%</td><td>-</td><td>-</td><td>-</td></tr>
+    <tr><td><span class="keyDot" style="background:#22c55e"></span>資源生産</td><td>+5%</td><td>-</td><td>-</td><td>-</td></tr>
+    <tr><td><span class="keyDot" style="background:#eab308"></span>研究速度</td><td>+5%</td><td>-</td><td>+8%</td><td>-</td></tr>
+    <tr><td><span class="keyDot" style="background:#f97316"></span>部隊攻撃</td><td>-</td><td>+5%</td><td>-</td><td>+8%</td></tr>
+    <tr><td><span class="keyDot" style="background:#ec4899"></span>訓練速度</td><td>-</td><td>+5%</td><td>-</td><td>-</td></tr>
+    <tr><td><span class="keyDot" style="background:#a855f7"></span>部隊防御</td><td>-</td><td>+5%</td><td>-</td><td>+8%</td></tr>
+    <tr><td><span class="keyDot" style="background:#ef4444"></span>行軍速度</td><td>-</td><td>-</td><td>+15%</td><td>-</td></tr>
+  </table>
+</div>
+
+<div class="hud">
+  <div class="box">
+    <div class="big">タップ座標</div>
+    <div id="tapXY" class="muted">X: -  /  Y: -</div>
+  </div>
+  <div class="box">
+    <div class="big">HQ</div>
+    <div id="hqXY" class="muted">X: 520 / Y: 520</div>
+  </div>
+  <button id="fullBtn" class="btn">全体</button>
+  <button id="resetBtn" class="btn">リセット</button>
+</div>
+
+<!-- Slide-up menu -->
+<div id="sheetBack"></div>
+<div id="sheet">
+  <div class="drag"></div>
+  <div class="sheetTop">
+    <div class="sheetTitle"></div>
+    <div class="sp"></div>
+    <button id="closeSheet" class="btn">閉じる</button>
+  </div>
+  <div class="sheetBody">
+    <div class="card">
+      <div class="row" style="align-items:center;">
+        <span style="font-weight:900; white-space:nowrap;">本部XY</span>
+        <input id="hqX" type="number" value="520" style="width:70px;">
+        <input id="hqY" type="number" value="520" style="width:70px;">
+        <button id="applyHQ" class="btn">反映</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="font-weight:900;">占領ステにチェック</div>
+        <button id="clearSel" class="btn">全外し</button>
+      </div>
+      <div id="checkGrid" class="grid2" style="margin-top:10px;"></div>
+      <div style="font-size:12px; opacity:.75; margin-top:8px; line-height:1.25;">
+        チェック → <strong>HQから最寄りの該当ステ</strong>を採用 → ルート作成
+      </div>
+      <button id="routeBtn" class="btn primary" style="width:100%; margin-top:12px;">ルート作成</button>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:900;">共有</div>
+      <div class="row">
+        <button id="shareBtn" class="btn">共有リンク作成</button>
+        <button id="copyRoute" class="btn">ステ一覧コピー</button>
+      </div>
+      <div style="font-size:12px; opacity:.75; margin-top:8px; line-height:1.25;">
+        リンクを送るだけで同じHQ座標・効果設定を共有できます。
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:900;">便利</div>
+      <div class="row">
+        <button id="goSun" class="btn">太陽城へ</button>
+        <button id="saveBtn" class="btn">保存(JSON)</button>
+        <button id="loadBtn" class="btn">読込(JSON)</button>
+      </div>
+      <div style="font-size:12px; opacity:.75; margin-top:8px;">
+        マップ操作：1本指ドラッグで移動 / ピンチで拡大縮小 / ステをタップで詳細
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Station detail -->
+<div id="detailBack"></div>
+<div id="detail">
+  <div class="top">
+    <div class="t" id="dTitle">ステ詳細</div>
+    <button id="dClose" class="btn x">×</button>
+  </div>
+  <div id="dSub" style="font-size:12px; opacity:.8; margin-bottom:6px;">(x,y)</div>
+  <div id="dEffectText" style="font-size:14px; font-weight:700; margin-bottom:10px;"></div>
+  <div class="row">
+    <button id="dCopy" class="btn">詳細コピー</button>
+    <button id="dExclude" class="btn" style="background:#ef4444; display:none;">×除外</button>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div id="confirmBack" style="position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; z-index:1100;"></div>
+<div id="confirmDlg" style="position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); background:#1e293b; padding:20px; border-radius:16px; z-index:1101; display:none; min-width:260px; text-align:center;">
+  <div id="confirmMsg" style="font-weight:700; margin-bottom:16px;">繋げますか？</div>
+  <div class="row" style="justify-content:center;">
+    <button id="confirmYes" class="btn" style="background:#22c55e;">はい</button>
+    <button id="confirmNo" class="btn">キャンセル</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+
+  // ===== アイコン画像読み込み =====
+  const iconSun = new Image();    iconSun.src = "icons/sun.png";
+  const iconFortress = new Image(); iconFortress.src = "icons/fortress.png";
+  const iconFort = new Image();   iconFort.src = "icons/fort.png";
+  const iconHQ = new Image();     iconHQ.src = "icons/hq.png";
+  const mapBg = new Image();      mapBg.src = "icons/map_bg.png";
+
+  let iconsLoaded = 0;
+  const onIconLoad = () => { iconsLoaded++; if(iconsLoaded >= 5) draw(); };
+  iconSun.onload = onIconLoad;
+  iconFortress.onload = onIconLoad;
+  iconFort.onload = onIconLoad;
+  iconHQ.onload = onIconLoad;
+  mapBg.onload = onIconLoad;
+
+  // ===== UI refs =====
+  const menuBtn = document.getElementById("menuBtn");
+  const routeBtn = document.getElementById("routeBtn");
+  const fullBtn = document.getElementById("fullBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const selPill = document.getElementById("selPill");
+  const tapXY = document.getElementById("tapXY");
+  const hqXY = document.getElementById("hqXY");
+
+  const sheetBack = document.getElementById("sheetBack");
+  const sheet = document.getElementById("sheet");
+  const closeSheet = document.getElementById("closeSheet");
+
+  const hqXEl = document.getElementById("hqX");
+  const hqYEl = document.getElementById("hqY");
+  const applyHQ = document.getElementById("applyHQ");
+
+  const clearSel = document.getElementById("clearSel");
+  const checkGrid = document.getElementById("checkGrid");
+
+  const shareBtn = document.getElementById("shareBtn");
+  const copyRoute = document.getElementById("copyRoute");
+  const goSun = document.getElementById("goSun");
+  const saveBtn = document.getElementById("saveBtn");
+  const loadBtn = document.getElementById("loadBtn");
+
+  const detailBack = document.getElementById("detailBack");
+  const detail = document.getElementById("detail");
+  const dClose = document.getElementById("dClose");
+  const dTitle = document.getElementById("dTitle");
+  const dSub = document.getElementById("dSub");
+  const dEffectText = document.getElementById("dEffectText");
+  const dCopy = document.getElementById("dCopy");
+  const dExclude = document.getElementById("dExclude");
+
+  const confirmBack = document.getElementById("confirmBack");
+  const confirmDlg = document.getElementById("confirmDlg");
+  const confirmMsg = document.getElementById("confirmMsg");
+  const confirmYes = document.getElementById("confirmYes");
+  const confirmNo = document.getElementById("confirmNo");
+
+  const toastEl = document.getElementById("toast");
+  const toast = (msg) => {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(()=>toastEl.classList.remove("show"), 900);
+  };
+  async function copyText(text){
+    try{ await navigator.clipboard.writeText(text); toast("コピーしました！"); }
+    catch{ prompt("手動コピーお願いします", text); }
+  }
+
+  // ===== WORLD / ISO =====
+  const WORLD_MIN = 0;
+  const WORLD_MAX = 1200;
+
+  const SCALE = 0.85;
+  function iso(x,y){ return { sx:(x-y)*SCALE, sy:(x+y)*SCALE*0.5 }; }
+
+  const cam = { x:0, y:0, s:0.3 };
+  const BASE = { x:0, y:0 };
+
+  function screenToWorld(px,py){
+    const x = (px - BASE.x - cam.x) / cam.s;
+    const y = (py - BASE.y - cam.y) / cam.s;
+    const X = (y/(SCALE*0.5) + x/SCALE) / 2;
+    const Y = (y/(SCALE*0.5) - x/SCALE) / 2;
+    return { x: Math.round(X), y: Math.round(Y) };
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+  function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
+  function dist(a,b){ return Math.sqrt(dist2(a,b)); }
+
+  // ===== Fixed objects =====
+  const SUN = { x:597, y:597, label:"太陽城" };
+
+  // 通行不可（黄色枠）
+  const NO_PASS = { x1:497, y1:497, x2:697, y2:697 };
+
+  const FORTRESSES = [
+    { id:1, x:597, y:800, label:"要塞1" },
+    { id:2, x:400, y:597, label:"要塞2" },
+    { id:3, x:597, y:400, label:"要塞3" },
+    { id:4, x:800, y:597, label:"要塞4" },
+  ];
+  const FORTS = [
+    [237,828],[237,606],[237,348],
+    [366,237],[588,137],[846,237],
+    [957,348],[957,606],[957,828],
+    [846,957],[606,957],[306,957]
+  ].map(([x,y],i)=>({ id:i+1, x, y, label:(i<4?`砦${i+1}`:"") }));
+
+  // ===== Effects =====
+  const EFFECTS = [
+    { id:"prod",  name:"生産工程",   color:"#22c55e" },
+    { id:"gath",  name:"採集工程",   color:"#06b6d4" },
+    { id:"build", name:"建築工程",   color:"#3b82f6" },
+    { id:"tech",  name:"技術工程",   color:"#eab308" },
+    { id:"train", name:"訓練工程",   color:"#ec4899" },
+    { id:"weapon",name:"武器工程",   color:"#f97316" },
+    { id:"def",   name:"防御工程",   color:"#a855f7" },
+    { id:"march", name:"遠征工程",   color:"#ef4444" },
+  ];
+  const effectById = Object.fromEntries(EFFECTS.map(e=>[e.id,e]));
+
+  const LEVEL_MAP = {
+    prod:   [1],
+    gath:   [1],
+    build:  [1, 3],
+    tech:   [1, 3],
+    train:  [2],
+    weapon: [2, 4],
+    def:    [2, 4],
+    march:  [3],
+  };
+
+  const EFFECT_LEVELS = [];
+  for(const e of EFFECTS){
+    for(const lv of LEVEL_MAP[e.id]){
+      EFFECT_LEVELS.push({
+        key: `${e.id}:${lv}`,
+        effectId: e.id,
+        lv,
+        label: `${e.name} Lv${lv}`,
+        color: e.color
+      });
+    }
+  }
+  const elByKey = Object.fromEntries(EFFECT_LEVELS.map(x=>[x.key,x]));
+
+  // ===== Stations (74) =====
+  const STATIONS_DATA = [
+    {x:138,y:327,eid:"prod",lv:1},{x:138,y:957,eid:"prod",lv:1},{x:237,y:138,eid:"prod",lv:1},{x:327,y:1038,eid:"prod",lv:1},
+    {x:768,y:138,eid:"prod",lv:1},{x:957,y:1068,eid:"prod",lv:1},{x:1068,y:237,eid:"prod",lv:1},{x:1068,y:747,eid:"prod",lv:1},
+    {x:87,y:666,eid:"gath",lv:1},{x:138,y:237,eid:"gath",lv:1},{x:267,y:1068,eid:"gath",lv:1},{x:537,y:87,eid:"gath",lv:1},
+    {x:636,y:1137,eid:"gath",lv:1},{x:957,y:138,eid:"gath",lv:1},{x:1068,y:936,eid:"gath",lv:1},{x:1137,y:567,eid:"gath",lv:1},
+    {x:138,y:138,eid:"build",lv:1},{x:138,y:666,eid:"build",lv:1},{x:138,y:1038,eid:"build",lv:1},{x:537,y:138,eid:"build",lv:1},
+    {x:666,y:1068,eid:"build",lv:1},{x:1068,y:138,eid:"build",lv:1},{x:1068,y:567,eid:"build",lv:1},{x:1068,y:1068,eid:"build",lv:1},
+    {x:327,y:666,eid:"build",lv:3},{x:486,y:327,eid:"build",lv:3},{x:768,y:867,eid:"build",lv:3},{x:867,y:567,eid:"build",lv:3},
+    {x:237,y:237,eid:"tech",lv:1},{x:237,y:957,eid:"tech",lv:1},{x:267,y:537,eid:"tech",lv:1},{x:537,y:936,eid:"tech",lv:1},
+    {x:666,y:267,eid:"tech",lv:1},{x:957,y:237,eid:"tech",lv:1},{x:936,y:537,eid:"tech",lv:1},{x:957,y:957,eid:"tech",lv:1},
+    {x:327,y:327,eid:"tech",lv:3},{x:327,y:867,eid:"tech",lv:3},{x:867,y:327,eid:"tech",lv:3},{x:867,y:867,eid:"tech",lv:3},
+    {x:138,y:747,eid:"train",lv:2},{x:237,y:486,eid:"train",lv:2},{x:486,y:138,eid:"train",lv:2},{x:486,y:957,eid:"train",lv:2},
+    {x:768,y:237,eid:"train",lv:2},{x:768,y:1038,eid:"train",lv:2},{x:957,y:747,eid:"train",lv:2},{x:1068,y:486,eid:"train",lv:2},
+    {x:138,y:438,eid:"weapon",lv:2},{x:138,y:867,eid:"weapon",lv:2},{x:366,y:138,eid:"weapon",lv:2},{x:438,y:1068,eid:"weapon",lv:2},
+    {x:666,y:138,eid:"weapon",lv:2},{x:738,y:957,eid:"weapon",lv:2},{x:957,y:438,eid:"weapon",lv:2},{x:1068,y:666,eid:"weapon",lv:2},
+    {x:387,y:486,eid:"weapon",lv:4},{x:588,y:867,eid:"weapon",lv:4},{x:816,y:486,eid:"weapon",lv:4},
+    {x:138,y:537,eid:"def",lv:2},{x:237,y:768,eid:"def",lv:2},{x:537,y:1038,eid:"def",lv:2},{x:438,y:267,eid:"def",lv:2},
+    {x:666,y:138,eid:"def",lv:2},{x:768,y:957,eid:"def",lv:2},{x:936,y:267,eid:"def",lv:2},{x:1038,y:537,eid:"def",lv:2},
+    {x:387,y:717,eid:"def",lv:4},{x:588,y:327,eid:"def",lv:4},{x:816,y:717,eid:"def",lv:4},
+    {x:327,y:567,eid:"march",lv:3},{x:486,y:867,eid:"march",lv:3},{x:768,y:327,eid:"march",lv:3},{x:867,y:666,eid:"march",lv:3},
+  ];
+
+  // ===== Areas (UIと一致) =====
+  const AREAS = [
+    { id:"fertile",  name:"沃土（黄色枠内）", color:"#facc15" },
+    { id:"snow",     name:"雪原（赤枠内）",   color:"#7dd3fc" },
+    { id:"wasteland",name:"荒野（赤枠外）",   color:"#94a3b8" },
+  ];
+
+  function getArea(x, y) {
+    if (x >= 492 && x <= 702 && y >= 492 && y <= 702) return "fertile";
+    if (x >= 327 && x <= 867 && y >= 327 && y <= 867) return "snow";
+    return "wasteland";
+  }
+
+  let stations = STATIONS_DATA.map((s, i) => ({
+    sid: i + 1,
+    key: `S${i + 1}`,
+    x: s.x, y: s.y,
+    effectId: s.eid,
+    lv: s.lv,
+    area: getArea(s.x, s.y)
+  }));
+
+  // ===== HQ =====
+  const allyColor = "#2b7cff";
+  const HQ = { x: Number(hqXEl.value)||520, y:Number(hqYEl.value)||520 };
+
+  function syncHQLabels(){
+    hqXY.textContent = `X: ${HQ.x} / Y: ${HQ.y}`;
+    hqXEl.value = HQ.x;
+    hqYEl.value = HQ.y;
+  }
+
+  // ===== Selection =====
+  const selectedKeys = new Set();
+  let chosenStations = [];
+  let edges = [];
+  let polylines = [];
+
+  // ===== Replacement mode =====
+  const excludedSids = new Set();
+  let replacementMode = null;
+  let alternativeStations = [];
+
+  function resizeIfNeeded(){
+    const rect = canvas.getBoundingClientRect();
+    let w = Math.floor(rect.width * devicePixelRatio);
+    let h = Math.floor(rect.height * devicePixelRatio);
+
+    if(w < 100 || h < 100){
+      w = Math.floor(window.innerWidth * devicePixelRatio);
+      h = Math.floor((window.innerHeight - 120) * devicePixelRatio);
+    }
+
+    if(canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+      ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    }
+    BASE.x = (rect.width > 100 ? rect.width : window.innerWidth) / 2;
+    BASE.y = (rect.height > 100 ? rect.height : (window.innerHeight - 120)) / 2;
+  }
+
+  function centerOnWorld(x,y){
+    const p = iso(x,y);
+    cam.x = -p.sx * cam.s;
+    cam.y = -p.sy * cam.s;
+  }
+
+  // ===== Geometry / no-pass =====
+  function pointInRect(p, r){ return p.x>=r.x1 && p.x<=r.x2 && p.y>=r.y1 && p.y<=r.y2; }
+  function orient(a,b,c){
+    const v = (b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x);
+    return v===0 ? 0 : (v>0 ? 1 : -1);
+  }
+  function onSeg(a,p,b){
+    return Math.min(a.x,b.x) <= p.x && p.x <= Math.max(a.x,b.x) &&
+           Math.min(a.y,b.y) <= p.y && p.y <= Math.max(a.y,b.y);
+  }
+  function segIntersect(a,b,c,d){
+    const o1 = orient(a,b,c);
+    const o2 = orient(a,b,d);
+    const o3 = orient(c,d,a);
+    const o4 = orient(c,d,b);
+    if(o1===0 && onSeg(a,c,b)) return true;
+    if(o2===0 && onSeg(a,d,b)) return true;
+    if(o3===0 && onSeg(c,a,d)) return true;
+    if(o4===0 && onSeg(c,b,d)) return true;
+    return (o1>0) !== (o2>0) && (o3>0) !== (o4>0);
+  }
+  function segIntersectsRect(a,b,r){
+    const minX = Math.min(a.x,b.x), maxX = Math.max(a.x,b.x);
+    const minY = Math.min(a.y,b.y), maxY = Math.max(a.y,b.y);
+    if(maxX < r.x1 || minX > r.x2 || maxY < r.y1 || minY > r.y2) return false;
+    if(pointInRect(a,r) || pointInRect(b,r)) return true;
+    const p1={x:r.x1,y:r.y1}, p2={x:r.x2,y:r.y1}, p3={x:r.x2,y:r.y2}, p4={x:r.x1,y:r.y2};
+    return (
+      segIntersect(a,b,p1,p2) ||
+      segIntersect(a,b,p2,p3) ||
+      segIntersect(a,b,p3,p4) ||
+      segIntersect(a,b,p4,p1)
+    );
+  }
+
+  function routeAvoidNoPass(a,b){
+    if(!segIntersectsRect(a,b,NO_PASS)) return [a,b];
+
+    const m = 16;
+    const corners = [
+      { x:NO_PASS.x1-m, y:NO_PASS.y1-m },
+      { x:NO_PASS.x2+m, y:NO_PASS.y1-m },
+      { x:NO_PASS.x2+m, y:NO_PASS.y2+m },
+      { x:NO_PASS.x1-m, y:NO_PASS.y2+m },
+    ];
+
+    let best=null, bestScore=Infinity;
+    for(const c of corners){
+      const ok1 = !segIntersectsRect(a,c,NO_PASS);
+      const ok2 = !segIntersectsRect(c,b,NO_PASS);
+      const score = dist(a,c) + dist(c,b) + (ok1&&ok2 ? 0 : 999999);
+      if(score < bestScore){ bestScore=score; best=c; }
+    }
+    if(best && !segIntersectsRect(a,best,NO_PASS) && !segIntersectsRect(best,b,NO_PASS)){
+      return [a,best,b];
+    }
+
+    const midCandidates = [
+      [{x:NO_PASS.x1-m, y:NO_PASS.y1-m}, {x:NO_PASS.x2+m, y:NO_PASS.y1-m}],
+      [{x:NO_PASS.x1-m, y:NO_PASS.y2+m}, {x:NO_PASS.x2+m, y:NO_PASS.y2+m}],
+      [{x:NO_PASS.x1-m, y:NO_PASS.y1-m}, {x:NO_PASS.x1-m, y:NO_PASS.y2+m}],
+      [{x:NO_PASS.x2+m, y:NO_PASS.y1-m}, {x:NO_PASS.x2+m, y:NO_PASS.y2+m}],
+    ];
+    let best2=null; bestScore=Infinity;
+    for(const [c1,c2] of midCandidates){
+      const ok = !segIntersectsRect(a,c1,NO_PASS) && !segIntersectsRect(c1,c2,NO_PASS) && !segIntersectsRect(c2,b,NO_PASS);
+      const score = dist(a,c1)+dist(c1,c2)+dist(c2,b) + (ok ? 0 : 999999);
+      if(score < bestScore){ bestScore=score; best2=[c1,c2]; }
+    }
+    if(best2) return [a,best2[0],best2[1],b];
+    return [a,b];
+  }
+
+  // ===== Pick nearest station for each checked effect+lv =====
+  function pickChosenStations(){
+    const used = new Set();
+    chosenStations = [];
+
+    for(const key of selectedKeys){
+      const req = elByKey[key];
+      const candidates = stations.filter(s => s.effectId===req.effectId && s.lv===req.lv && !used.has(s.sid));
+      if(!candidates.length) continue;
+
+      let best = candidates[0];
+      let bestD = dist2(HQ, best);
+      for(const s of candidates){
+        const d = dist2(HQ, s);
+        if(d < bestD){ bestD=d; best=s; }
+      }
+      used.add(best.sid);
+      chosenStations.push({ key, station: best });
+    }
+    chosenStations.sort((a,b)=>dist2(HQ,a.station)-dist2(HQ,b.station));
+  }
+
+  // ===== MST =====
+  function buildMST(){
+    edges = [];
+    const nodes = [
+      { label:"HQ", x:HQ.x, y:HQ.y, kind:"hq" },
+      ...chosenStations.map(cs=>{
+        const req = elByKey[cs.key];
+        return { label:req.label, x:cs.station.x, y:cs.station.y, kind:"st", sid: cs.station.sid };
+      })
+    ];
+    if(nodes.length<=1) return;
+
+    const inTree = new Set([0]);
+    const best = Array(nodes.length).fill(null);
+    for(let i=1;i<nodes.length;i++){
+      best[i] = { from:0, d2: dist2(nodes[0], nodes[i]) };
+    }
+
+    while(inTree.size < nodes.length){
+      let pick=-1, bestD=Infinity;
+      for(let i=1;i<nodes.length;i++){
+        if(inTree.has(i)) continue;
+        if(best[i].d2 < bestD){ bestD=best[i].d2; pick=i; }
+      }
+      if(pick===-1) break;
+      const from = best[pick].from;
+      inTree.add(pick);
+      edges.push({ a:nodes[from], b:nodes[pick] });
+
+      for(let j=1;j<nodes.length;j++){
+        if(inTree.has(j)) continue;
+        const d = dist2(nodes[pick], nodes[j]);
+        if(d < best[j].d2) best[j] = { from: pick, d2: d };
+      }
+    }
+  }
+
+  function buildPolylines(){
+    polylines = [];
+    for(const e of edges){
+      const a = {x:e.a.x, y:e.a.y, label:e.a.label};
+      const b = {x:e.b.x, y:e.b.y, label:e.b.label};
+      polylines.push({ points: routeAvoidNoPass(a,b) });
+    }
+  }
+
+  // ===== Drawing =====
+  const tintCache = new Map();
+  function tintIcon(img, size, tintColor){
+    const key = `${img.src}|${size}|${tintColor}`;
+    if(tintCache.has(key)) return tintCache.get(key);
+
+    const off = document.createElement("canvas");
+    off.width = size; off.height = size;
+    const octx = off.getContext("2d");
+    octx.drawImage(img, 0, 0, size, size);
+    octx.globalCompositeOperation = "source-in";
+    octx.fillStyle = tintColor;
+    octx.fillRect(0,0,size,size);
+
+    tintCache.set(key, off);
+    return off;
+  }
+
+  function drawIconInverted(img, x, y, size, tintColor){
+    if(!img.complete || img.naturalWidth === 0) return;
+    const off = tintIcon(img, size, tintColor);
+    ctx.drawImage(off, x, y);
+  }
+
+  function drawBackground(){
+    ctx.fillStyle = "#2a3142";
+    ctx.fillRect(-99999,-99999,199998,199998);
+  }
+
+  function drawMapImage(){
+    // Not used - using programmatic drawing
+  }
+
+  function drawAreas(){
+    const worldBorder = [{x:0,y:0},{x:WORLD_MAX,y:0},{x:WORLD_MAX,y:WORLD_MAX},{x:0,y:WORLD_MAX}];
+    const snowBorder  = [{x:327,y:327},{x:867,y:327},{x:867,y:867},{x:327,y:867}];
+    const fertileBorder=[{x:492,y:492},{x:702,y:492},{x:702,y:702},{x:492,y:702}];
+
+    // 荒野 (outer gray area)
+    ctx.beginPath();
+    for(let i=0;i<worldBorder.length;i++){
+      const p=iso(worldBorder[i].x,worldBorder[i].y);
+      if(i===0) ctx.moveTo(p.sx,p.sy); else ctx.lineTo(p.sx,p.sy);
+    }
+    ctx.closePath();
+    ctx.fillStyle="#3a4255";
+    ctx.fill();
+
+    // 雪原 (red border)
+    ctx.beginPath();
+    for(let i=0;i<snowBorder.length;i++){
+      const p=iso(snowBorder[i].x,snowBorder[i].y);
+      if(i===0) ctx.moveTo(p.sx,p.sy); else ctx.lineTo(p.sx,p.sy);
+    }
+    ctx.closePath();
+    ctx.fillStyle="#4a5568";
+    ctx.fill();
+    ctx.strokeStyle="#e05050";
+    ctx.lineWidth=3;
+    ctx.stroke();
+
+    // 沃土 (yellow border)
+    ctx.beginPath();
+    for(let i=0;i<fertileBorder.length;i++){
+      const p=iso(fertileBorder[i].x,fertileBorder[i].y);
+      if(i===0) ctx.moveTo(p.sx,p.sy); else ctx.lineTo(p.sx,p.sy);
+    }
+    ctx.closePath();
+    ctx.fillStyle="#5a6578";
+    ctx.fill();
+    ctx.strokeStyle="#e0c040";
+    ctx.lineWidth=3;
+    ctx.stroke();
+  }
+
+  function drawGrid(){
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    
+    // Draw vertical lines (x = 0, 100, 200, ... 1000)
+    for(let x = 0; x <= WORLD_MAX; x += 100){
+      const p1 = iso(x, 0);
+      const p2 = iso(x, WORLD_MAX);
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, p1.sy);
+      ctx.lineTo(p2.sx, p2.sy);
+      ctx.stroke();
+    }
+    
+    // Draw horizontal lines (y = 0, 100, 200, ... 1000)
+    for(let y = 0; y <= WORLD_MAX; y += 100){
+      const p1 = iso(0, y);
+      const p2 = iso(WORLD_MAX, y);
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, p1.sy);
+      ctx.lineTo(p2.sx, p2.sy);
+      ctx.stroke();
+    }
+  }
+
+  function drawNoPassZone(){
+    const p11 = iso(NO_PASS.x1, NO_PASS.y1);
+    const p12 = iso(NO_PASS.x2, NO_PASS.y1);
+    const p22 = iso(NO_PASS.x2, NO_PASS.y2);
+    const p21 = iso(NO_PASS.x1, NO_PASS.y2);
+
+    ctx.beginPath();
+    ctx.moveTo(p11.sx, p11.sy);
+    ctx.lineTo(p12.sx, p12.sy);
+    ctx.lineTo(p22.sx, p22.sy);
+    ctx.lineTo(p21.sx, p21.sy);
+    ctx.closePath();
+
+    ctx.fillStyle = "rgba(245, 158, 11, 0.18)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+  }
+
+  function drawSun(){
+    const p = iso(SUN.x,SUN.y);
+    const size = 70;
+    ctx.drawImage(iconSun, p.sx - size/2, p.sy - size/2 - 10, size, size);
+  }
+
+  function drawFortresses(){
+    const size = 60;
+    for(const f of FORTRESSES){
+      const p = iso(f.x,f.y);
+      ctx.drawImage(iconFortress, p.sx - size/2, p.sy - size/2 - 8, size, size);
+      ctx.fillStyle="#fff";
+      ctx.font="900 16px system-ui";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(f.id, p.sx, p.sy - 2);
+    }
+    ctx.textBaseline="alphabetic";
+  }
+
+  function drawForts(){
+    const size = 40;
+    for(const ft of FORTS){
+      const p = iso(ft.x,ft.y);
+      ctx.drawImage(iconFort, p.sx - size/2, p.sy - size/2 - 6, size, size);
+      ctx.fillStyle="#fff";
+      ctx.font="900 14px system-ui";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(ft.id, p.sx, p.sy - 2);
+    }
+    ctx.textBaseline="alphabetic";
+  }
+
+  function drawStations(){
+    const altSet = new Set(alternativeStations.map(s=>s.sid));
+    const chosenSet = new Set(chosenStations.map(cs=>cs.station.sid));
+    const sorted = [...stations].sort((a,b)=>(a.x+a.y)-(b.x+b.y));
+    for(const s of sorted){
+      const p = iso(s.x,s.y);
+      const eff = effectById[s.effectId] || EFFECTS[0];
+      const shortName = eff.name.replace("工程","");
+      const label = `${shortName}Lv${s.lv}`;
+      const isAlt = altSet.has(s.sid);
+      const isChosen = chosenSet.has(s.sid);
+
+      if(isAlt){
+        ctx.save();
+        ctx.shadowColor = "#facc15";
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = "#facc15";
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, 14, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.fillStyle = eff.color;
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, 8, 0, Math.PI*2); ctx.fill();
+
+      ctx.strokeStyle = isAlt ? "#facc15" : "rgba(255,255,255,.8)";
+      ctx.lineWidth = isAlt ? 3 : 2;
+      ctx.stroke();
+
+      if(!isChosen){
+        ctx.font = "700 12px system-ui";
+        ctx.textAlign = "center";
+        ctx.strokeStyle = "#1a202c";
+        ctx.lineWidth = 3;
+        ctx.lineJoin = "round";
+        ctx.strokeText(label, p.sx, p.sy - 14);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(label, p.sx, p.sy - 14);
+      }
+    }
+  }
+
+  function drawChosenAndRoute(){
+    const SHADOW_W = 12;
+    const MAIN_W = 6;
+
+    if(polylines.length){
+      ctx.strokeStyle="rgba(0,0,0,.45)";
+      ctx.lineWidth=SHADOW_W;
+      ctx.lineCap="round";
+      ctx.lineJoin="round";
+      ctx.beginPath();
+      for(const pl of polylines){
+        const pts=pl.points;
+        for(let i=0;i<pts.length-1;i++){
+          const a=iso(pts[i].x,pts[i].y);
+          const b=iso(pts[i+1].x,pts[i+1].y);
+          ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy);
+        }
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle=allyColor;
+      ctx.lineWidth=MAIN_W;
+      ctx.beginPath();
+      for(const pl of polylines){
+        const pts=pl.points;
+        for(let i=0;i<pts.length-1;i++){
+          const a=iso(pts[i].x,pts[i].y);
+          const b=iso(pts[i+1].x,pts[i+1].y);
+          ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy);
+        }
+      }
+      ctx.stroke();
+    }
+
+    for(const cs of chosenStations){
+      const s=cs.station;
+      const req=elByKey[cs.key];
+      const p=iso(s.x,s.y);
+
+      ctx.fillStyle=allyColor;
+      ctx.beginPath(); ctx.arc(p.sx,p.sy-1,7.2,0,Math.PI*2); ctx.fill();
+
+      ctx.strokeStyle="rgba(255,255,255,.85)";
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(p.sx,p.sy-1,7.2,0,Math.PI*2); ctx.stroke();
+
+      ctx.font="900 12px system-ui";
+      ctx.textAlign="center";
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round";
+      ctx.strokeText(req.label, p.sx, p.sy - 16);
+      ctx.fillStyle="#fff";
+      ctx.fillText(req.label, p.sx, p.sy - 16);
+    }
+  }
+
+  function drawHQ(){
+    const p=iso(HQ.x,HQ.y);
+    const size=36;
+    drawIconInverted(iconHQ, p.sx - size/2, p.sy - size + 6, size, allyColor);
+    ctx.fillStyle="#fff";
+    ctx.font="900 12px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText("HQ", p.sx, p.sy + 16);
+  }
+
+  function draw(){
+    resizeIfNeeded();
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+
+    ctx.save();
+    ctx.translate(BASE.x + cam.x, BASE.y + cam.y);
+    ctx.scale(cam.s, cam.s);
+
+    drawBackground();
+    drawMapImage();
+    drawAreas();
+    drawGrid();
+    drawNoPassZone();
+    drawStations();
+    drawSun();
+    drawFortresses();
+    drawForts();
+    drawChosenAndRoute();
+    drawHQ();
+
+    ctx.restore();
+  }
+
+  // ===== Checklist =====
+  function renderChecklist(){
+    checkGrid.innerHTML = "";
+
+    const availableEffects = new Set();
+    for(const s of stations){
+      availableEffects.add(`${s.effectId}:${s.lv}`);
+    }
+
+    for(const item of EFFECT_LEVELS){
+      if(!availableEffects.has(item.key)) continue;
+
+      const row = document.createElement("div");
+      row.className = "check";
+
+      const left = document.createElement("div");
+      left.className = "left";
+
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.checked = selectedKeys.has(item.key);
+      chk.addEventListener("change", ()=>{
+        if(chk.checked) selectedKeys.add(item.key);
+        else selectedKeys.delete(item.key);
+        selPill.textContent = `選択 ${selectedKeys.size}`;
+      });
+
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = item.color;
+
+      const nm = document.createElement("div");
+      nm.style.minWidth = 0;
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = item.label;
+
+      const sub = document.createElement("div");
+      sub.className = "sub";
+      const cnt = stations.filter(s => s.effectId===item.effectId && s.lv===item.lv).length;
+      sub.textContent = `${cnt}箇所`;
+
+      nm.appendChild(name);
+      nm.appendChild(sub);
+
+      left.appendChild(chk);
+      left.appendChild(dot);
+      left.appendChild(nm);
+
+      row.appendChild(left);
+      checkGrid.appendChild(row);
+    }
+    selPill.textContent = `選択 ${selectedKeys.size}`;
+  }
+
+  // ===== Sheet =====
+  function openSheet(){
+    sheetBack.classList.add("open");
+    sheet.classList.add("open");
+    renderChecklist();
+  }
+  function closeSheetFn(){
+    sheetBack.classList.remove("open");
+    sheet.classList.remove("open");
+  }
+  menuBtn.addEventListener("click", openSheet);
+  closeSheet.addEventListener("click", closeSheetFn);
+  sheetBack.addEventListener("click", closeSheetFn);
+
+  // ===== HQ controls =====
+  applyHQ.addEventListener("click", ()=>{
+    const x = Number(hqXEl.value), y = Number(hqYEl.value);
+    if(!Number.isFinite(x) || !Number.isFinite(y)){ toast("HQ座標が変だよ"); return; }
+    HQ.x = clamp(Math.round(x), WORLD_MIN, WORLD_MAX);
+    HQ.y = clamp(Math.round(y), WORLD_MIN, WORLD_MAX);
+    syncHQLabels();
+    toast("HQ反映");
+    draw();
+  });
+
+  // ===== Route =====
+  function buildRoute(){
+    if(selectedKeys.size===0){ toast("効果をチェックしてね"); return; }
+    pickChosenStations();
+    buildMST();
+    buildPolylines();
+    toast(`採用 ${chosenStations.length}`);
+    draw();
+  }
+  routeBtn.addEventListener("click", buildRoute);
+
+  clearSel.addEventListener("click", ()=>{
+    selectedKeys.clear();
+    chosenStations = [];
+    edges = [];
+    polylines = [];
+    selPill.textContent = "選択 0";
+    renderChecklist();
+    draw();
+    toast("全外し");
+  });
+
+  copyRoute.addEventListener("click", ()=>{
+    const lines = [];
+    lines.push(`HQ: (${HQ.x}, ${HQ.y})`);
+    lines.push(``);
+    lines.push(`チェック: ${[...selectedKeys].map(k=>elByKey[k].label).join(" / ") || "(なし)"}`);
+    lines.push(``);
+    lines.push(`採用（HQ最寄り）:`);
+    for(const cs of chosenStations){
+      const s = cs.station;
+      const req = elByKey[cs.key];
+      lines.push(`- ${req.label}: ${s.key} (${s.x},${s.y})`);
+    }
+    lines.push(``);
+    lines.push(`ルート（回避済み折れ線）:`);
+    if(!polylines.length) lines.push("(未作成)");
+    else{
+      let i=1;
+      for(const pl of polylines){
+        const pts = pl.points.map(p=>`(${p.x},${p.y})`).join(" -> ");
+        lines.push(`${i++}. ${pts}`);
+      }
+    }
+    copyText(lines.join("\n"));
+  });
+
+  shareBtn.addEventListener("click", ()=>{
+    const params = new URLSearchParams();
+    params.set("hq", `${HQ.x},${HQ.y}`);
+    if(selectedKeys.size > 0) params.set("eff", [...selectedKeys].join(","));
+    const url = `${location.origin}${location.pathname}?${params.toString()}`;
+    copyText(url);
+    toast("共有リンクをコピー！");
+  });
+
+  goSun.addEventListener("click", ()=>{
+    centerOnWorld(SUN.x,SUN.y);
+    toast("太陽城へ");
+    draw();
+  });
+
+  saveBtn.addEventListener("click", ()=>{
+    const payload = { version: 2, HQ, selectedKeys:[...selectedKeys], stations, cam };
+    prompt("このJSONをコピーして保存してね", JSON.stringify(payload, null, 2));
+  });
+
+  loadBtn.addEventListener("click", ()=>{
+    const txt = prompt("保存したJSONを貼り付けてね");
+    if(!txt) return;
+    try{
+      const obj = JSON.parse(txt);
+      if(obj.HQ){
+        HQ.x = clamp(Math.round(obj.HQ.x||HQ.x), WORLD_MIN, WORLD_MAX);
+        HQ.y = clamp(Math.round(obj.HQ.y||HQ.y), WORLD_MIN, WORLD_MAX);
+        syncHQLabels();
+      }
+      if(Array.isArray(obj.stations)) stations = obj.stations;
+
+      selectedKeys.clear();
+      if(Array.isArray(obj.selectedKeys)) obj.selectedKeys.forEach(k=>selectedKeys.add(k));
+      selPill.textContent = `選択 ${selectedKeys.size}`;
+
+      if(obj.cam){
+        cam.x = obj.cam.x||0; cam.y = obj.cam.y||0; cam.s = obj.cam.s||1;
+      }
+
+      chosenStations = [];
+      edges = [];
+      polylines = [];
+      renderChecklist();
+      draw();
+      toast("読込OK");
+    }catch(e){
+      alert("JSONが壊れてるかも…");
+    }
+  });
+
+  // ===== Zoom / Full / Reset =====
+  fullBtn.addEventListener("click", ()=>{
+    cam.s = 0.5;
+    cam.x = 0;
+    cam.y = -150 * cam.s;
+    draw();
+    toast("全体表示");
+  });
+
+  resetBtn.addEventListener("click", ()=>{
+    cam.s = 1;
+    centerOnWorld(SUN.x,SUN.y);
+    chosenStations = [];
+    edges = [];
+    polylines = [];
+    excludedSids.clear();
+    replacementMode = null;
+    alternativeStations = [];
+    tapXY.textContent = `X: -  /  Y: -`;
+    draw();
+    toast("リセット");
+  });
+
+  // ===== Station hit test =====
+  function nearestStationAt(px,py){
+    const w = screenToWorld(px,py);
+    let best = stations[0];
+    let bestD = dist2(w, best);
+    for(const s of stations){
+      const d = dist2(w, s);
+      if(d < bestD){ bestD=d; best=s; }
+    }
+    return { station: best, worldTap: w, d2: bestD };
+  }
+
+  let detailStation = null;
+  let detailLandmark = null;
+  function isInRoute(sid){
+    return chosenStations.some(cs => cs.station.sid === sid);
+  }
+  function openDetail(s){
+    detailStation = s;
+    detailLandmark = null;
+    const eff = effectById[s.effectId];
+    dTitle.textContent = `${eff?.name || s.effectId} Lv${s.lv}`;
+    dSub.textContent = `座標 (${s.x}, ${s.y})`;
+    dEffectText.textContent = `ステーション: ${s.key}`;
+    dExclude.style.display = isInRoute(s.sid) ? "inline-block" : "none";
+    dCopy.style.display = "inline-block";
+    detailBack.style.display = "block";
+    detail.style.display = "block";
+  }
+  function openLandmarkDetail(type, data){
+    detailStation = null;
+    detailLandmark = { type, data };
+    if(type === "sun"){
+      dTitle.textContent = "太陽城";
+      dSub.textContent = `座標 (${data.x}, ${data.y})`;
+      dEffectText.textContent = "マップ中央のランドマーク";
+    } else if(type === "fortress"){
+      dTitle.textContent = data.label || `要塞${data.id}`;
+      dSub.textContent = `座標 (${data.x}, ${data.y})`;
+      dEffectText.textContent = "要塞";
+    } else if(type === "fort"){
+      dTitle.textContent = data.label || `${data.id}号砦`;
+      dSub.textContent = `座標 (${data.x}, ${data.y})`;
+      dEffectText.textContent = "砦";
+    }
+    dExclude.style.display = "none";
+    dCopy.style.display = "none";
+    detailBack.style.display = "block";
+    detail.style.display = "block";
+  }
+  function closeDetail(){
+    detailBack.style.display = "none";
+    detail.style.display = "none";
+    detailStation = null;
+    detailLandmark = null;
+  }
+  dClose.addEventListener("click", closeDetail);
+  detailBack.addEventListener("click", closeDetail);
+
+  dCopy.addEventListener("click", ()=>{
+    if(!detailStation) return;
+    const eff = effectById[detailStation.effectId];
+    const txt = `${detailStation.key} / ${eff?.name || detailStation.effectId} Lv${detailStation.lv} / (${detailStation.x}, ${detailStation.y})`;
+    copyText(txt);
+  });
+
+  dExclude.addEventListener("click", ()=>{
+    if(!detailStation) return;
+    const s = detailStation;
+    excludedSids.add(s.sid);
+    alternativeStations = stations.filter(st =>
+      st.effectId === s.effectId && st.lv === s.lv && st.sid !== s.sid && !excludedSids.has(st.sid)
+    );
+    replacementMode = { excludedSid: s.sid, effectId: s.effectId, lv: s.lv };
+    closeDetail();
+    toast(`代替ステ ${alternativeStations.length}件`);
+    draw();
+  });
+
+  let confirmCallback = null;
+  function showConfirm(msg, onYes){
+    confirmMsg.textContent = msg;
+    confirmBack.style.display = "block";
+    confirmDlg.style.display = "block";
+    confirmCallback = onYes;
+  }
+  function closeConfirm(confirmed){
+    confirmBack.style.display = "none";
+    confirmDlg.style.display = "none";
+    if(confirmed && confirmCallback){
+      confirmCallback();
+    }
+    confirmCallback = null;
+  }
+  confirmYes.addEventListener("click", ()=> closeConfirm(true));
+  confirmNo.addEventListener("click", ()=> closeConfirm(false));
+  confirmBack.addEventListener("click", ()=> closeConfirm(false));
+
+  function replaceStation(newStation){
+    const idx = chosenStations.findIndex(cs => cs.station.sid === replacementMode.excludedSid);
+    if(idx >= 0){
+      chosenStations[idx].station = newStation;
+    }
+    excludedSids.delete(replacementMode.excludedSid);
+    replacementMode = null;
+    alternativeStations = [];
+    buildMST();
+    buildPolylines();
+    draw();
+    toast("ルート更新完了");
+  }
+
+  // ===== Touch / Pan / Pinch =====
+  const pointers = new Map();
+  let lastPan = null;
+  let pinchStart = null;
+
+  function midpoint(a,b){ return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
+  function len(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.sqrt(dx*dx+dy*dy); }
+
+  canvas.addEventListener("pointerdown",(e)=>{
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if(pointers.size===1){
+      lastPan = {x:e.clientX,y:e.clientY};
+    }else if(pointers.size===2){
+      const [p1,p2] = [...pointers.values()];
+      pinchStart = { mid: midpoint(p1,p2), dist: len(p1,p2), camS: cam.s, camX: cam.x, camY: cam.y };
+    }
+  });
+
+  canvas.addEventListener("pointermove",(e)=>{
+    if(!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+
+    if(pointers.size===1 && lastPan){
+      const dx = e.clientX - lastPan.x;
+      const dy = e.clientY - lastPan.y;
+      lastPan = {x:e.clientX,y:e.clientY};
+      cam.x += dx;
+      cam.y += dy;
+      draw();
+    }else if(pointers.size===2 && pinchStart){
+      const [p1,p2] = [...pointers.values()];
+      const mid = midpoint(p1,p2);
+      const d = len(p1,p2);
+      const factor = d / pinchStart.dist;
+
+      cam.s = clamp(pinchStart.camS * factor, 0.15, 3.2);
+      cam.x = pinchStart.camX + (mid.x - pinchStart.mid.x);
+      cam.y = pinchStart.camY + (mid.y - pinchStart.mid.y);
+      draw();
+    }
+  });
+
+  function endPointer(e){
+    pointers.delete(e.pointerId);
+    if(pointers.size===0){ lastPan=null; pinchStart=null; }
+    else if(pointers.size===1){
+      const [p] = [...pointers.values()];
+      lastPan = {x:p.x,y:p.y};
+      pinchStart=null;
+    }
+  }
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+
+  canvas.addEventListener("click",(e)=>{
+    const w = screenToWorld(e.clientX, e.clientY);
+    const wx = clamp(w.x,WORLD_MIN,WORLD_MAX);
+    const wy = clamp(w.y,WORLD_MIN,WORLD_MAX);
+    
+    // Check if clicked on sun castle
+    const sp = iso(SUN.x, SUN.y);
+    const ssx = BASE.x + cam.x + sp.sx * cam.s;
+    const ssy = BASE.y + cam.y + sp.sy * cam.s;
+    const sdx = e.clientX - ssx, sdy = e.clientY - ssy;
+    if(sdx*sdx + sdy*sdy <= 40*40){
+      openLandmarkDetail("sun", SUN);
+      tapXY.textContent = `太陽城  (X: ${SUN.x} / Y: ${SUN.y})`;
+      return;
+    }
+    
+    // Check if clicked on fortress
+    for(const f of FORTRESSES){
+      const fp = iso(f.x, f.y);
+      const sx = BASE.x + cam.x + fp.sx * cam.s;
+      const sy = BASE.y + cam.y + fp.sy * cam.s;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if(dx*dx + dy*dy <= 35*35){
+        openLandmarkDetail("fortress", f);
+        tapXY.textContent = `要塞${f.id}  (X: ${f.x} / Y: ${f.y})`;
+        return;
+      }
+    }
+    
+    // Check if clicked on fort
+    for(const ft of FORTS){
+      const fp = iso(ft.x, ft.y);
+      const sx = BASE.x + cam.x + fp.sx * cam.s;
+      const sy = BASE.y + cam.y + fp.sy * cam.s;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if(dx*dx + dy*dy <= 30*30){
+        openLandmarkDetail("fort", ft);
+        tapXY.textContent = `${ft.id}号砦  (X: ${ft.x} / Y: ${ft.y})`;
+        return;
+      }
+    }
+    
+    // Check if clicked on station
+    const hit = nearestStationAt(e.clientX, e.clientY);
+    if(hit.d2 <= 40*40){
+      const s = hit.station;
+      if(replacementMode && alternativeStations.some(alt => alt.sid === s.sid)){
+        const eff = effectById[s.effectId];
+        showConfirm(`${eff?.name || s.effectId} Lv${s.lv}\n(${s.x}, ${s.y})\n繋げますか？`, ()=>{
+          replaceStation(s);
+        });
+        return;
+      }
+      openDetail(hit.station);
+      return;
+    }
+    
+    // If in replacement mode and clicked elsewhere, cancel replacement
+    if(replacementMode){
+      excludedSids.delete(replacementMode.excludedSid);
+      replacementMode = null;
+      alternativeStations = [];
+      draw();
+      toast("キャンセル");
+      return;
+    }
+    
+    // Default: show coordinates
+    tapXY.textContent = `X: ${wx}  /  Y: ${wy}`;
+  });
+
+  canvas.addEventListener("wheel",(e)=>{
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.002);
+    cam.s = clamp(cam.s * factor, 0.15, 3.2);
+    draw();
+  }, {passive:false});
+
+  // ===== Boot =====
+  function parseURLParams(){
+    const params = new URLSearchParams(location.search);
+    const hqParam = params.get("hq");
+    if(hqParam){
+      const [x,y] = hqParam.split(",").map(Number);
+      if(Number.isFinite(x) && Number.isFinite(y)){
+        HQ.x = clamp(Math.round(x), WORLD_MIN, WORLD_MAX);
+        HQ.y = clamp(Math.round(y), WORLD_MIN, WORLD_MAX);
+        hqXEl.value = HQ.x;
+        hqYEl.value = HQ.y;
+      }
+    }
+    const effParam = params.get("eff");
+    if(effParam){
+      selectedKeys.clear();
+      effParam.split(",").forEach(k=>{ if(elByKey[k]) selectedKeys.add(k); });
+      selPill.textContent = `選択 ${selectedKeys.size}`;
+    }
+  }
+
+  function boot(){
+    parseURLParams();
+    resizeIfNeeded();
+    syncHQLabels();
+    renderChecklist();
+  }
+
+  function initCamera(){
+    resizeIfNeeded();
+    cam.s = 0.5;
+    cam.x = 0;
+    cam.y = -150 * cam.s;
+    draw();
+  }
+
+  window.addEventListener("resize", ()=>{ resizeIfNeeded(); draw(); });
+  window.addEventListener("load", ()=>{ setTimeout(initCamera, 50); });
+
+  boot();
+  initCamera();
+})();
+</script>
+</body>
+</html>
